@@ -1,198 +1,142 @@
-import { useRef, useState, type ChangeEvent } from 'react'
-import { parse_resume, ParseResumeError } from '../parse_resume.ts'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useState } from 'react'
 import './App.css'
+import ResumeMatcher from './components/ResumeMatcher'
+import DataManager from './components/DataManager'
+import MyResumes from './components/MyResumes'
+import DemoPanel from './components/DemoPanel'
+import { DEV } from './dev'
+import { DEFAULT_APPEARANCE } from './types'
+import type { BankPhoto, GeneratedResume, PhotoAdvice, ResumeAppearance, SavedResume } from './types'
+
+type Tab = 'matcher' | 'data' | 'resumes' | 'demo'
+
+const STORAGE_KEY = 'resume-inator.saved-resumes'
+const PHOTOS_KEY = 'resume-inator.photos'
+
+const loadSaved = (): SavedResume[] => {
+  try {
+    const items: SavedResume[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+    // Resumes saved before appearance was split into layout/font/color
+    return items.map((r) => ({ ...r, appearance: r.appearance ?? DEFAULT_APPEARANCE }))
+  } catch {
+    return []
+  }
+}
+
+const loadPhotos = (): BankPhoto[] => {
+  try {
+    return JSON.parse(localStorage.getItem(PHOTOS_KEY) ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+function AtomLogo() {
+  return (
+    <svg className="atom-logo" viewBox="0 0 64 64" aria-hidden="true">
+      <ellipse className="orbit orbit-1" cx="32" cy="32" rx="28" ry="10" />
+      <ellipse className="orbit orbit-2" cx="32" cy="32" rx="28" ry="10" />
+      <ellipse className="orbit orbit-3" cx="32" cy="32" rx="28" ry="10" />
+      <g className="electrons">
+        <circle className="electron" cx="60" cy="32" r="2.5" />
+        <circle className="electron" cx="18" cy="56.2" r="2.5" />
+        <circle className="electron" cx="18" cy="7.8" r="2.5" />
+      </g>
+      <circle className="nucleus" cx="32" cy="32" r="5" />
+    </svg>
+  )
+}
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [parseResult, setParseResult] = useState<unknown | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const runParse = async (file: File) => {
-    setIsLoading(true)
-    setParseResult(null)
-    setSelectedFileName(file.name)
+  const [activeTab, setActiveTab] = useState<Tab>('matcher')
+  const [saved, setSaved] = useState<SavedResume[]>(loadSaved)
+  const [photos, setPhotos] = useState<BankPhoto[]>(loadPhotos)
+  const updatePhotos = (next: BankPhoto[]) => {
+    setPhotos(next)
     try {
-      const result = await parse_resume(file)
-      setParseResult(result)
-    } catch (error) {
-      if (error instanceof ParseResumeError) {
-        setParseResult({
-          error: error.message,
-          status: error.status,
-        })
-      } else {
-        setParseResult({ error: String(error) })
-      }
-    } finally {
-      setIsLoading(false)
-    }
+      localStorage.setItem(PHOTOS_KEY, JSON.stringify(next))
+    } catch { /* storage full or unavailable; keep in memory */ }
   }
 
-  const handlePickResume = () => {
-    fileInputRef.current?.click()
+  const updateSaved = (next: SavedResume[]) => {
+    setSaved(next)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch { /* storage unavailable; keep in memory */ }
   }
 
-  const handleResumeSelected = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
-      return
-    }
-    await runParse(file)
-    event.target.value = ''
-  }
+  const saveResume = (name: string, jobUrl: string, appearance: ResumeAppearance, resume: GeneratedResume, photoAdvice?: PhotoAdvice) =>
+    updateSaved([
+      { id: Date.now().toString(), name, jobUrl, appearance, photoAdvice, resume, savedAt: new Date().toISOString() },
+      ...saved,
+    ])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div className="app-container">
+      <div className="app-banner">
+      <header className="app-header">
+        <AtomLogo />
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <h1>Resume-inator</h1>
+          <p>Tailor your resume to every job listing</p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt,.text,.md,.markdown,.pdf"
-          onChange={handleResumeSelected}
-          style={{ display: 'none' }}
-          aria-hidden
-        />
-        <button
-          type="button"
-          onClick={handlePickResume}
-          disabled={isLoading}
-          style={{ marginLeft: '10px' }}
-        >
-          {isLoading ? 'Parsing…' : 'Parse resume'}
-        </button>
-        <p
-          style={{
-            marginTop: '12px',
-            fontSize: '0.85rem',
-            maxWidth: '28rem',
-            opacity: 0.85,
-          }}
-        >
-          Choose a <strong>.pdf</strong> or <strong>.txt</strong> resume. Set{' '}
-          <code>ANTHROPIC_API_KEY=&quot;sk-ant-...&quot;</code> in{' '}
-          <code>.env.local</code> at the project root (plain line, not JSON).
-        </p>
-        {selectedFileName && (
-          <p style={{ marginTop: '8px', fontSize: '0.9rem' }}>
-            {isLoading ? 'Parsing' : 'Last file'}: {selectedFileName}
-          </p>
+      </header>
+      </div>
+
+      <nav className="tab-nav">
+        <div className="tab-nav-inner">
+          <button
+            className={`tab-button ${activeTab === 'matcher' ? 'active' : ''}`}
+            onClick={() => setActiveTab('matcher')}
+          >
+            Resume Matcher
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'data' ? 'active' : ''}`}
+            onClick={() => setActiveTab('data')}
+          >
+            Data Bank
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'resumes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('resumes')}
+          >
+            My Resumes{saved.length > 0 && ` (${saved.length})`}
+          </button>
+          {DEV.showDemoTab && (
+            <button
+              className={`tab-button ${activeTab === 'demo' ? 'active' : ''}`}
+              onClick={() => setActiveTab('demo')}
+            >
+              Demo
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* All tabs stay mounted (just hidden) so in-progress work survives switching tabs */}
+      <main className="app-content">
+        <div hidden={activeTab !== 'matcher'}>
+          <ResumeMatcher photoBank={photos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
+        </div>
+        <div hidden={activeTab !== 'data'}>
+          <DataManager photos={photos} onPhotosChange={updatePhotos} />
+        </div>
+        <div hidden={activeTab !== 'resumes'}>
+          <MyResumes
+            resumes={saved}
+            photoBank={photos}
+            onUpdate={(id, patch) => updateSaved(saved.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
+            onDelete={(id) => updateSaved(saved.filter((r) => r.id !== id))}
+          />
+        </div>
+        {DEV.showDemoTab && (
+          <div hidden={activeTab !== 'demo'}>
+            <DemoPanel />
+          </div>
         )}
-        {parseResult !== null && (
-          <pre style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', maxHeight: '400px', overflow: 'auto' }}>
-            {JSON.stringify(parseResult, null, 2)}
-          </pre>
-        )}
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      </main>
+    </div>
   )
 }
 

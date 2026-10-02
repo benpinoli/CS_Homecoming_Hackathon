@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "src/parse_resume_server.ts", "src/resume_pipeline_debug.ts"]
+  "include": ["vite.config.ts", "dev-server", "src/parse_resume_server.ts", "src/resume_pipeline_debug.ts"]
 }

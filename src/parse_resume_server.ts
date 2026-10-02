@@ -47,8 +47,8 @@ function extractSystemPrompt(sampleConfirmation: string): string {
 }
 
 function buildUserMessage(payload: ParseResumeApiRequest): string {
-  const profileSchema = readKitFile('resume_extraction.schema.json')
-  const responseSchema = readKitFile('resume_parser_prompt.md')
+  const profileSchema = readKitFile('profile.schema.json')
+  const responseSchema = readKitFile('resume_extraction.schema.json')
 
   return [
     'PROFILE_SCHEMA:',
@@ -268,8 +268,7 @@ export async function runResumeParserOnServer(
 
   const model = env.RESUME_PARSER_MODEL ?? 'claude-haiku-4-5'
   const maxTokens = parseMaxTokens(env)
-  const sampleConfirmation = readKitFile('sample_confirmation.txt')
-  const systemPrompt = extractSystemPrompt(sampleConfirmation)
+  const systemPrompt = extractSystemPrompt(readKitFile('resume_parser_prompt.md'))
   const userMessage = buildUserMessage(payload)
 
   let completion = await callAnthropicMessages(

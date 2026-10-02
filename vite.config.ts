@@ -1,7 +1,11 @@
 import react from '@vitejs/plugin-react'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, type ViteDevServer } from 'vite'
 import type { Connect } from 'vite'
+import { scraperBridge } from './dev-server/scraperBridge.ts'
+
+const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
 function readJsonBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -21,21 +25,21 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   return {
+    root: 'src/frontend',
+    build: {
+      outDir: '../../dist',
+    },
     plugins: [
       react(),
+      scraperBridge(),
       {
         name: 'parse-resume-api',
         configureServer(server: ViteDevServer) {
-          const projectRoot = server.config.root ?? process.cwd()
           void import('./src/parse_resume_server.ts').then(
             ({ anthropicApiKeyStatus, loadResumeParserEnv }) => {
-              const status = anthropicApiKeyStatus(
-                loadResumeParserEnv(projectRoot, server.config.mode),
-              )
+              const status = anthropicApiKeyStatus(loadResumeParserEnv(projectRoot, server.config.mode))
               if (status.loaded) {
-                console.log(
-                  `[parse-resume] ANTHROPIC_API_KEY loaded (${status.length} chars)`,
-                )
+                console.log(`[parse-resume] ANTHROPIC_API_KEY loaded (${status.length} chars)`)
               } else {
                 console.warn(
                   '[parse-resume] ANTHROPIC_API_KEY not found in .env.local — parsing will fail until you add it.',
@@ -73,23 +77,14 @@ export default defineConfig(({ mode }) => {
                   return
                 }
 
-                const { runResumeParserOnServer } = await import(
+                const { runResumeParserOnServer, loadResumeParserEnv } = await import(
                   './src/parse_resume_server.ts'
                 )
-                const { loadResumeParserEnv } = await import(
-                  './src/parse_resume_server.ts'
-                )
-                const parserEnv = loadResumeParserEnv(
-                  server.config.root ?? process.cwd(),
-                  server.config.mode ?? mode,
-                )
+                const parserEnv = loadResumeParserEnv(projectRoot, server.config.mode ?? mode)
                 const result = await runResumeParserOnServer(payload, parserEnv)
                 sendJson(res, 200, result)
               } catch (error) {
-                const message =
-                  error instanceof Error
-                    ? error.message
-                    : 'Resume parsing failed.'
+                const message = error instanceof Error ? error.message : 'Resume parsing failed.'
                 sendJson(res, 500, { error: message })
               }
             },
