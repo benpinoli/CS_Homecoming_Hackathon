@@ -6,6 +6,11 @@ import type { GeneratedResume, PhotoAdvice, TailoringPoint } from '../types'
 export interface ScrapedJob {
   url: string
   job_description: string
+  title?: string | null
+  company?: string | null
+  location?: string | null
+  /** Which strategy found the posting, e.g. "greenhouse_api", "json_ld", "html_generic" */
+  source?: string
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
