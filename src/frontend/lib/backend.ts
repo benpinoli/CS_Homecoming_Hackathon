@@ -11,6 +11,11 @@ import type { GeneratedResume, PhotoAdvice, ResumeImport, TailoringPoint } from 
 export interface ScrapedJob {
   url: string
   job_description: string
+  title?: string | null
+  company?: string | null
+  location?: string | null
+  /** Which strategy found the posting, e.g. "greenhouse_api", "json_ld", "html_generic" */
+  source?: string
 }
 
 /** Scraper failure that still carries what the scraper produced, so the Demo tab can show it */

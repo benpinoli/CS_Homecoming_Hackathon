@@ -29,6 +29,13 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: '../../dist',
     },
+    server: {
+      // Everything under /api goes to llm_app (uvicorn on :8000), except the routes the plugins
+      // below serve themselves (/api/scrape, /api/parse-resume): plugin middleware runs first.
+      proxy: {
+        '/api': 'http://localhost:8000',
+      },
+    },
     plugins: [
       react(),
       scraperBridge(),

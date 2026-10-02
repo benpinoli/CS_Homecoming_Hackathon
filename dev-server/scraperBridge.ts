@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,14 +10,25 @@ import { pythonPath } from './python.ts'
 /**
  * Dev-only bridge so the browser can use src/backend/web_scraper/scraper.py.
  *
- * GET /api/scrape?url=<job listing url>  ->  { url, job_description }  |  { error }
+ * GET /api/scrape?url=<job listing url>
+ *   ->  { url, title, company, location, job_description, source }  |  { error }
  *
- * The script is run unmodified: it reads the URL from stdin and writes job_posting.json to its
- * working directory, so each request gets a throwaway temp directory.
- * Interpreter: the PYTHON env var, else ./.venv if present, else python3.
+ * The script reads the URL from stdin and writes job_posting.json to its working directory,
+ * so each request gets a throwaway temp directory.
+ * Interpreter: the PYTHON env var if set, else web_scraper/.venv if it exists, else python/python3.
  */
-const SCRAPER = fileURLToPath(new URL('../src/backend/web_scraper/scraper.py', import.meta.url))
-const TIMEOUT_MS = 30_000
+const SCRAPER_DIR = fileURLToPath(new URL('../src/backend/web_scraper/', import.meta.url))
+const SCRAPER = join(SCRAPER_DIR, 'scraper.py')
+const TIMEOUT_MS = 45_000
+
+function pythonCommand(): string {
+  if (process.env.PYTHON) return process.env.PYTHON
+  const isWindows = process.platform === 'win32'
+  const venvPython = join(SCRAPER_DIR, '.venv', isWindows ? 'Scripts/python.exe' : 'bin/python')
+  if (existsSync(venvPython)) return venvPython
+  // On Windows "python3" is often the Microsoft Store stub, so prefer "python" there.
+  return isWindows ? 'python' : 'python3'
+}
 
 interface Outcome {
   status: number
@@ -31,7 +43,7 @@ function run(url: string): Promise<Outcome> {
         resolve(outcome)
       }
 
-      const python = pythonPath()
+      const python = pythonCommand()
       const child = spawn(python, [SCRAPER], { cwd: dir })
       let stdout = ''
       let stderr = ''
@@ -49,9 +61,13 @@ function run(url: string): Promise<Outcome> {
       child.on('close', async (code) => {
         clearTimeout(timer)
         if (code !== 0) {
-          const lastLine = stderr.trim().split('\n').pop() ?? ''
+          const lastLine = stderr.trim().split('\n').pop()?.trim() ?? ''
+          // scraper.py reports expected failures (blocked site, no description found) as "Error: ..."
+          if (lastLine.startsWith('Error: ')) {
+            return done({ status: 422, body: { error: lastLine.slice('Error: '.length) } })
+          }
           const message = /No module named/.test(lastLine)
-            ? `${lastLine}. Install the scraper’s Python packages: python3 -m venv .venv && .venv/bin/pip install requests beautifulsoup4`
+            ? `${lastLine}. Install the scraper’s Python packages: pip install -r src/backend/web_scraper/requirements.txt`
             : lastLine || 'The scraper failed.'
           return done({ status: 502, body: { error: message } })
         }
