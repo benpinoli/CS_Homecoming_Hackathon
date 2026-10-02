@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.pytest_cache/
+llm_provider.env
+data/output/*
+!data/output/.gitkeep
