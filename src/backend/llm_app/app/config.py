@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     anthropic_model: str = "claude-opus-5-5"
     # low | medium | high | xhigh | max
-    anthropic_effort: str = "high"
-    anthropic_max_tokens: int = 16000
+    anthropic_effort: str = "low"
+    anthropic_max_tokens: int = 10000
     # Re-runs a safety-declined request on a fallback model server-side.
     enable_refusal_fallback: bool = True
 
