@@ -2,6 +2,7 @@ import { DEV } from '../dev'
 import { DUMMY_PHOTO_ADVICE, DUMMY_RESUME, DUMMY_RESUME_IMPORT, DUMMY_TAILORING } from './dummyData'
 import { parse_resume } from '../../parse_resume.ts'
 import type { ResumeExtraction } from '../../parse_resume.ts'
+import { extractionToResumeImport } from './extractionToDataBank.ts'
 import type { GeneratedResume, PhotoAdvice, ResumeImport, TailoringPoint } from '../types'
 
 /** What web_scraper/scraper.py produces (job_posting.json) */
@@ -63,14 +64,14 @@ export async function getPhotoAdvice(job: ScrapedJob): Promise<PhotoAdvice> {
 
 /**
  * Read an uploaded resume file into Data Bank entries.
- * When the real parser exists, send `file` to it here and convert its candidate_profile into ParsedResume
- * (see src/backend/resume_json_builder/resume_bank_kit/resume_extraction.schema.json).
+ * The real parser returns an evidence-backed profile; this converts that into the form fields.
  */
 export async function parseResumeFile(file: File): Promise<ResumeImport> {
-  void file // will be uploaded once the parser is hooked up
-  if (DEV.useRealResumeParser) throw notHooked('Resume import', 'useRealResumeParser')
-  await sleep(1500)
-  return structuredClone(DUMMY_RESUME_IMPORT)
+  if (!DEV.useRealResumeParser) {
+    await sleep(1500)
+    return structuredClone(DUMMY_RESUME_IMPORT)
+  }
+  return extractionToResumeImport(await parse_resume(file))
 }
 
 /**

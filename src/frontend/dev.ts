@@ -25,9 +25,8 @@ export const DEV = {
 	useRealPhotoAdvice: false,
 
 	/**
-	 * Read an uploaded resume into the Data Bank.
-	 * The parser itself works (the Demo tab uses it: src/parse_resume.ts), but its output is an evidence-backed
-	 * candidate_profile, and nothing converts that into the Data Bank's fields yet, so this stays on placeholder data.
+	 * Read an uploaded resume into the Data Bank via /api/parse-resume.
+	 * Set false only to show the Jordan Smith placeholder without calling the API.
 	 */
-	useRealResumeParser: false,
+	useRealResumeParser: true,
 };

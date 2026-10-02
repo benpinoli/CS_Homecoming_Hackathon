@@ -189,7 +189,7 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
   const [importError, setImportError] = useState('')
   const [importNotice, setImportNotice] = useState<{ file: string; counts: string[]; warnings: string[] } | null>(null)
 
-  /** Adds parsed entries. Existing entries are kept; the single Contact entry only has its blank fields filled. */
+  /** Replaces Data Bank sections with the uploaded resume. A new file does not keep the previous import. */
   const applyImport = (parsed: ParsedResume) => {
     const counts: string[] = []
     const next = { ...data }
@@ -197,12 +197,12 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
       const incoming = parsed[def.id]
       if (!incoming?.length) continue
       if (def.single) {
-        const existing = data[def.id][0]
-        const merged = { ...existing }
+        const merged = blankEntry(def)
+        merged.id = data[def.id][0]?.id ?? merged.id
         let filled = 0
         for (const f of def.fields) {
           const v = incoming[0][f.key]?.trim()
-          if (v && !existing[f.key]?.trim()) {
+          if (v) {
             merged[f.key] = v
             filled++
           }
@@ -210,13 +210,12 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
         next[def.id] = [merged]
         if (filled) counts.push(`${def.nav}: ${filled} field${filled > 1 ? 's' : ''}`)
       } else {
-        const added = incoming.map((row) => {
+        next[def.id] = incoming.map((row) => {
           const entry = blankEntry(def)
           def.fields.forEach((f) => { entry[f.key] = row[f.key] ?? '' })
           return entry
         })
-        next[def.id] = [...data[def.id], ...added]
-        counts.push(`${def.nav}: ${added.length}`)
+        counts.push(`${def.nav}: ${next[def.id].length}`)
       }
     }
     if (counts.length) setData(next)
