@@ -1,7 +1,71 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { defineConfig, loadEnv, type ViteDevServer } from 'vite'
+import type { Connect } from 'vite'
+
+function readJsonBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    req.on('data', (chunk) => chunks.push(chunk))
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    req.on('error', reject)
+  })
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify(body))
+}
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [react()],
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(
+        async (
+          req: Connect.IncomingMessage,
+          res: ServerResponse,
+          next: Connect.NextFunction,
+        ) => {
+        if (req.url !== '/api/parse-resume' || req.method !== 'POST') {
+          next()
+          return
+        }
+
+        try {
+          const rawBody = await readJsonBody(req)
+          const payload = JSON.parse(rawBody) as import('./src/parse_resume.ts').ParseResumeApiRequest
+
+          if (
+            !payload?.profile_id ||
+            !payload?.person_entity_id ||
+            !payload?.captured_at ||
+            !Array.isArray(payload?.sources) ||
+            payload.sources.length === 0
+          ) {
+            sendJson(res, 400, { error: 'Invalid parse-resume request payload.' })
+            return
+          }
+
+          const { runResumeParserOnServer } = await import(
+            './src/parse_resume_server.ts'
+          )
+          const result = await runResumeParserOnServer(payload, {
+            ...process.env,
+            ...env,
+          })
+          sendJson(res, 200, result)
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : 'Resume parsing failed.'
+          sendJson(res, 500, { error: message })
+        }
+      },
+      )
+    },
+  }
 })
