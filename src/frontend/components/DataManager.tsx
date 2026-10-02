@@ -1,17 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Field from './Field'
 import PhotoBank from './PhotoBank'
-import type { BankPhoto } from '../types'
+import { parseResumeFile } from '../lib/backend'
+import type { BankPhoto, DataSectionId, ParsedResume } from '../types'
 import '../styles/DataManager.css'
 
-type SectionId =
-  | 'profile'
-  | 'experience'
-  | 'education'
-  | 'projects'
-  | 'skills'
-  | 'volunteer'
-  | 'certifications'
+type SectionId = DataSectionId
 
 type Entry = { id: string } & Record<string, string>
 
@@ -189,6 +183,83 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
 
   const section = SECTIONS.find((s) => s.id === activeSection) ?? SECTIONS[0]
 
+  // ---- Import from an existing resume ----
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [importNotice, setImportNotice] = useState<{ file: string; counts: string[]; warnings: string[] } | null>(null)
+
+  /** Adds parsed entries. Existing entries are kept; the single Contact entry only has its blank fields filled. */
+  const applyImport = (parsed: ParsedResume) => {
+    const counts: string[] = []
+    const next = { ...data }
+    for (const def of SECTIONS) {
+      const incoming = parsed[def.id]
+      if (!incoming?.length) continue
+      if (def.single) {
+        const existing = data[def.id][0]
+        const merged = { ...existing }
+        let filled = 0
+        for (const f of def.fields) {
+          const v = incoming[0][f.key]?.trim()
+          if (v && !existing[f.key]?.trim()) {
+            merged[f.key] = v
+            filled++
+          }
+        }
+        next[def.id] = [merged]
+        if (filled) counts.push(`${def.nav}: ${filled} field${filled > 1 ? 's' : ''}`)
+      } else {
+        const added = incoming.map((row) => {
+          const entry = blankEntry(def)
+          def.fields.forEach((f) => { entry[f.key] = row[f.key] ?? '' })
+          return entry
+        })
+        next[def.id] = [...data[def.id], ...added]
+        counts.push(`${def.nav}: ${added.length}`)
+      }
+    }
+    if (counts.length) setData(next)
+    return counts
+  }
+
+  const importResume = async (files: FileList | null) => {
+    const file = files?.[0]
+    if (fileInput.current) fileInput.current.value = ''
+    if (!file) return
+    setImportError('')
+    setImportNotice(null)
+
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(ext)) {
+      setImportError('That file type isn’t supported. Upload a PDF, Word document, or text file.')
+      return
+    }
+    if (file.size === 0) {
+      setImportError('That file is empty.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImportError('That file is larger than 10 MB. Try a smaller version of your resume.')
+      return
+    }
+
+    setImporting(true)
+    try {
+      const result = await parseResumeFile(file)
+      const counts = applyImport(result.data)
+      if (counts.length === 0) {
+        setImportError('We couldn’t find any resume content in that file.')
+      } else {
+        setImportNotice({ file: file.name, counts, warnings: result.warnings })
+      }
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Something went wrong while reading that resume.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   const addEntry = (def: SectionDef) =>
     setData((d) => ({ ...d, [def.id]: [...d[def.id], blankEntry(def)] }))
 
@@ -212,6 +283,19 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
     <div className="data-manager">
       <aside className="data-sidebar">
         <h2>Data Bank</h2>
+        <div className="import-box">
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.rtf"
+            hidden
+            onChange={(e) => importResume(e.target.files)}
+          />
+          <button className="btn btn-primary import-btn" disabled={importing} onClick={() => fileInput.current?.click()}>
+            {importing ? <><span className="spinner small" aria-hidden="true" /> Reading resume…</> : 'Upload existing resume'}
+          </button>
+          <p className="import-hint">PDF, Word or text. We’ll fill in the sections below for you to review.</p>
+        </div>
         <nav className="data-nav">
           {SECTIONS.map((s) => {
             const issues = issueCount(s)
@@ -237,6 +321,30 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
         </nav>
       </aside>
 
+      <div className="data-main">
+      {importError && (
+        <div className="error-message import-message" role="alert">
+          {importError}
+          <button className="notice-close" onClick={() => setImportError('')} aria-label="Dismiss">✕</button>
+        </div>
+      )}
+      {importNotice && (
+        <div className="import-notice" role="status">
+          <div className="import-notice-head">
+            <strong>Imported from {importNotice.file}</strong>
+            <button className="notice-close" onClick={() => setImportNotice(null)} aria-label="Dismiss">✕</button>
+          </div>
+          <ul className="import-counts">
+            {importNotice.counts.map((c) => <li key={c}>{c}</li>)}
+          </ul>
+          <p>Look through each section and fix anything that isn’t right. Imported entries were added to what you already had.</p>
+          {importNotice.warnings.length > 0 && (
+            <ul className="import-warnings">
+              {importNotice.warnings.map((w) => <li key={w}>{w}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
       {activeSection === 'photos' ? (
         <PhotoBank photos={photos} onChange={onPhotosChange} />
       ) : (
@@ -301,6 +409,7 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
         </div>
       </section>
       )}
+      </div>
     </div>
   )
 }

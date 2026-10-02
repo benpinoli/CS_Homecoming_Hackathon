@@ -1,5 +1,5 @@
 // Placeholder content used while a backend function's flag in dev.ts is false.
-import type { GeneratedResume, PhotoAdvice, TailoringPoint } from '../types'
+import type { GeneratedResume, PhotoAdvice, ResumeImport, TailoringPoint } from '../types'
 
 export const DUMMY_RESUME: GeneratedResume = {
   name: 'Jordan Smith',
@@ -86,4 +86,74 @@ export const DUMMY_TAILORING: TailoringPoint[] = [
 export const DUMMY_PHOTO_ADVICE: PhotoAdvice = {
   recommended: false,
   reason: 'Photos are uncommon on US corporate and operations resumes, and some employers prefer to leave them out to avoid bias. Skip it unless the listing asks for one.'
+}
+
+export const DUMMY_RESUME_IMPORT: ResumeImport = {
+  data: {
+    profile: [{
+      name: 'Jordan Smith',
+      email: 'jordan@example.com',
+      phone: '(555) 123-4567',
+      location: 'Denver, CO',
+      linkedin: 'linkedin.com/in/jordansmith',
+      website: '',
+      summary: 'Operations manager with 6+ years of experience leading teams and streamlining processes.',
+    }],
+    experience: [
+      {
+        company: 'Summit Logistics',
+        position: 'Operations Manager',
+        location: 'Denver, CO',
+        startDate: 'Jun 2021',
+        endDate: 'Present',
+        description: 'Led a team of 12 across scheduling, inventory, and customer support.\nRedesigned the dispatch process, reducing delivery delays by 25%.',
+      },
+      {
+        company: 'Front Range Supply Co.',
+        position: 'Operations Coordinator',
+        location: 'Boulder, CO',
+        startDate: 'Jul 2018',
+        endDate: 'May 2021',
+        description: 'Managed a $1.2M annual purchasing budget.\nTrained 20+ new hires on safety and quality procedures.',
+      },
+    ],
+    education: [{
+      school: 'University of Colorado',
+      degree: 'B.A.',
+      field: 'Business Administration',
+      location: 'Boulder, CO',
+      startDate: 'Aug 2014',
+      endDate: 'May 2018',
+      gpa: '',
+      details: 'Magna Cum Laude',
+    }],
+    projects: [{
+      name: 'Warehouse Consolidation',
+      role: 'Project lead',
+      technologies: 'Budgeting, vendor negotiation, change management',
+      link: '',
+      startDate: '',
+      endDate: '',
+      description: 'Merged two facilities into one, saving $180K per year with no service interruption.',
+    }],
+    skills: [
+      { name: 'Team leadership', category: 'Leadership' },
+      { name: 'Process improvement', category: 'Operations' },
+      { name: 'Budgeting', category: 'Finance' },
+      { name: 'Vendor management', category: 'Operations' },
+      { name: 'Excel', category: 'Software' },
+    ],
+    volunteer: [{
+      organization: 'Local Food Bank',
+      role: 'Volunteer Coordinator',
+      startDate: 'Sep 2019',
+      endDate: 'Present',
+      description: 'Scheduled and supervised 30 weekly volunteers.',
+    }],
+    certifications: [{ name: 'Project Management Professional (PMP)', issuer: 'Project Management Institute', date: '2022' }],
+  },
+  warnings: [
+    'The end date of “Front Range Supply Co.” was hard to read. Check it.',
+    'No GPA was found, so that field was left blank.',
+  ],
 }

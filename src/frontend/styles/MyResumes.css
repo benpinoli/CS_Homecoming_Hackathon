@@ -3,7 +3,6 @@
   grid-template-columns: 330px minmax(0, 1fr);
   gap: 1.75rem;
   align-items: start;
-  transition: grid-template-columns 0.25s ease;
 }
 
 .my-resumes.collapsed { grid-template-columns: 76px minmax(0, 1fr); }
@@ -77,15 +76,26 @@
   border-left: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: rotate(45deg) translate(1px, -1px); /* points left: "collapse" */
-  transition: transform 0.2s ease;
 }
 
 .collapsed .chevron { transform: rotate(-135deg) translate(1px, -1px); } /* points right: "expand" */
+
+.resume-rows,
+.rail {
+  /* About five and a half rows show, so the half-visible one hints that the list scrolls */
+  max-height: 25rem;
+  overflow-y: auto;
+  scrollbar-width: none; /* still scrolls; the bar is hidden */
+}
+
+.resume-rows::-webkit-scrollbar,
+.rail::-webkit-scrollbar { display: none; }
 
 .resume-rows {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  padding-right: 0.25rem;
 }
 
 .resume-row {
@@ -101,9 +111,17 @@
 .resume-row:hover { background: var(--surface); }
 
 .resume-row.active {
-  background: var(--surface);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-glow);
+  background: #d5e3f7; /* pale blue tint marks the selected resume */
+  border-color: #b4cbea;
+}
+
+.resume-row.active:hover { background: #d5e3f7; }
+
+.resume-row.active .card-name { color: var(--heading); }
+
+.resume-row.active .btn-secondary {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: #a8c0e3;
 }
 
 .row-main {
@@ -215,6 +233,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.6rem;
+  padding: 0.1rem 0;
 }
 
 .rail-item {
@@ -227,7 +246,7 @@
 }
 
 .rail-item:hover { border-color: var(--line-strong); }
-.rail-item.active { border-color: var(--accent); background: var(--surface); }
+.rail-item.active { border-color: #b4cbea; background: #d5e3f7; }
 .rail-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- Selected resume ---------- */
@@ -254,24 +273,45 @@
 
 .resume-view .action-bar { margin-bottom: 1.25rem; max-width: 520px; }
 
-/* Preview grows when the list is collapsed */
+/*
+ * The preview column is exactly as wide as the page: capped at a comfortable width (larger when the
+ * list is collapsed) and shrunk if needed so a whole letter-size page (8.5:11) fits the window height.
+ * Sizing the column to the page keeps it centered and leaves no stray gap next to the editor.
+ */
 .view-body {
+  --preview-max: 440px;
   display: grid;
-  grid-template-columns: minmax(0, 440px);
-  gap: 2rem;
+  grid-template-columns: auto;
+  gap: 1.5rem;
   align-items: start;
   justify-content: center;
-  transition: grid-template-columns 0.25s ease;
 }
 
-.collapsed .view-body { grid-template-columns: minmax(0, 760px); }
+.collapsed .view-body { --preview-max: 760px; }
+.collapsed .view-body.is-editing { --preview-max: 580px; }
 
-.view-body.is-editing { justify-content: start; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); }
-.collapsed .view-body.is-editing { grid-template-columns: minmax(0, 580px) minmax(0, 1fr); }
+.view-body.is-editing {
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-content: start;
+}
 
 .view-preview {
   position: sticky;
   top: 4.5rem;
+  width: min(var(--preview-max), calc((100vh - 7rem) * 0.7727));
+}
+
+.view-preview .resume-page { width: 100%; }
+
+/* Editor scrolls separately from the preview */
+.view-body.is-editing > .resume-editor {
+  position: sticky;
+  top: 4.5rem;
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .my-resumes-empty {
@@ -296,5 +336,6 @@
   .collapsed .rail { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
   .view-body.is-editing,
   .collapsed .view-body.is-editing { grid-template-columns: 1fr; }
-  .view-preview { position: static; }
+  .view-preview { position: static; width: 100%; max-width: var(--preview-max); margin: 0 auto; }
+  .view-body.is-editing > .resume-editor { position: static; max-height: none; overflow: visible; padding-right: 0; }
 }

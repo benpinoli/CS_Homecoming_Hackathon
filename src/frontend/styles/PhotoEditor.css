@@ -59,29 +59,92 @@
 .bank-choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .bank-choice {
-  width: 3.2rem;
-  height: 3.2rem;
-  padding: 0;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 4.6rem;
+  padding: 0.3rem;
+  background: var(--surface);
   border: 2px solid var(--line);
   border-radius: var(--radius);
-  background: var(--surface);
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .bank-choice img {
   display: block;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 1;
   object-fit: cover;
+  border-radius: 3px;
 }
 
-.bank-choice.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.bank-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.bank-choice:hover { border-color: var(--line-strong); }
+.bank-choice.active { border-color: var(--accent); background: var(--surface-2); box-shadow: 0 0 0 2px var(--accent-glow); }
+.bank-choice.active .bank-name { color: var(--heading); font-weight: 600; }
 .bank-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.add-tile { border-style: dashed; color: var(--text-muted); }
+
+.add-tile .add-box {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--accent);
+  background: var(--bg-raised);
+  border-radius: 3px;
+}
+
+.add-tile:hover { border-color: var(--accent); }
+.add-tile:hover .bank-name { color: var(--heading); }
+
+.add-photo-form {
+  display: grid;
+  grid-template-columns: 4.6rem minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+  margin-top: 0.4rem;
+  padding: 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.pending-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.add-photo-form .cropper-actions { grid-column: 1 / -1; }
+
+.photo-selects {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .photo-selects { grid-template-columns: 1fr; }
+}
 
 .cropper {
   display: flex;
@@ -103,25 +166,19 @@
   align-items: flex-start;
 }
 
-.zoom-row {
+.cropper.editing { align-items: flex-start; }
+
+.cropper-side {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 11rem;
+  align-items: flex-start;
 }
 
-.zoom-row input { flex: 1; accent-color: var(--accent); }
-
-.shape-icon {
-  display: inline-block;
-  width: 0.8rem;
-  border: 2px solid currentColor;
-}
+.cropper-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.cropper-actions .btn { padding: 0.45rem 0.9rem; font-size: 0.78rem; }
 
 .ring-swatch {
   display: inline-block;

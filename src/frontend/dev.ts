@@ -23,4 +23,11 @@ export const DEV = {
 
 	/** Decide whether a photo is recommended for the job (src/backend/llm_app). Not hooked up yet. */
 	useRealPhotoAdvice: false,
+
+	/**
+	 * Read an uploaded resume into the Data Bank.
+	 * The parser itself works (the Demo tab uses it: src/parse_resume.ts), but its output is an evidence-backed
+	 * candidate_profile, and nothing converts that into the Data Bank's fields yet, so this stays on placeholder data.
+	 */
+	useRealResumeParser: false,
 };

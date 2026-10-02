@@ -74,9 +74,10 @@ textarea {
   color: inherit;
 }
 
+/* Solid blue with white text reads on the light cards, the dark page, and the navy header alike */
 ::selection {
-  background: var(--accent-deep);
-  color: var(--text-strong);
+  background: #2d68c2;
+  color: #ffffff;
 }
 
 ::-webkit-scrollbar {

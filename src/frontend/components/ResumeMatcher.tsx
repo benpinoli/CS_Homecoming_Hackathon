@@ -14,6 +14,7 @@ import '../styles/ResumeMatcher.css'
 interface ResumeMatcherProps {
   onSave: (name: string, jobUrl: string, appearance: ResumeAppearance, resume: GeneratedResume, photoAdvice?: PhotoAdvice) => void
   photoBank: BankPhoto[]
+  onPhotoBankChange: (photos: BankPhoto[]) => void
   onViewSaved: () => void
 }
 
@@ -23,7 +24,7 @@ const defaultName = (url: string) => {
   return `Resume – ${host}`
 }
 
-export default function ResumeMatcher({ onSave, photoBank, onViewSaved }: ResumeMatcherProps) {
+export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, onViewSaved }: ResumeMatcherProps) {
   const [jobUrl, setJobUrl] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -147,7 +148,7 @@ export default function ResumeMatcher({ onSave, photoBank, onViewSaved }: Resume
       )}
 
       {resume && (
-        <div className="results-container">
+        <div className={`results-container${editing ? ' is-editing' : ''}`}>
           <div className="resume-section">
             <div className="section-header">
               <div className="header-row">
@@ -214,6 +215,7 @@ export default function ResumeMatcher({ onSave, photoBank, onViewSaved }: Resume
                   appearance={appearance}
                   onAppearanceChange={setAppearance}
                   photoBank={photoBank}
+                  onPhotoBankChange={onPhotoBankChange}
                   photoAdvice={photoAdvice}
                 />
               </div>

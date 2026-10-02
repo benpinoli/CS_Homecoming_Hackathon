@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
+import { pythonPath } from './python.ts'
 
 /**
  * Dev-only bridge so the browser can use src/backend/web_scraper/scraper.py.
@@ -12,7 +13,7 @@ import type { Plugin } from 'vite'
  *
  * The script is run unmodified: it reads the URL from stdin and writes job_posting.json to its
  * working directory, so each request gets a throwaway temp directory.
- * Set the PYTHON env var to choose the interpreter (default: python3).
+ * Interpreter: the PYTHON env var, else ./.venv if present, else python3.
  */
 const SCRAPER = fileURLToPath(new URL('../src/backend/web_scraper/scraper.py', import.meta.url))
 const TIMEOUT_MS = 30_000
@@ -30,7 +31,7 @@ function run(url: string): Promise<Outcome> {
         resolve(outcome)
       }
 
-      const python = process.env.PYTHON ?? 'python3'
+      const python = pythonPath()
       const child = spawn(python, [SCRAPER], { cwd: dir })
       let stdout = ''
       let stderr = ''
@@ -50,7 +51,7 @@ function run(url: string): Promise<Outcome> {
         if (code !== 0) {
           const lastLine = stderr.trim().split('\n').pop() ?? ''
           const message = /No module named/.test(lastLine)
-            ? `${lastLine}. Install the scraper’s Python packages: pip install requests beautifulsoup4`
+            ? `${lastLine}. Install the scraper’s Python packages: python3 -m venv .venv && .venv/bin/pip install requests beautifulsoup4`
             : lastLine || 'The scraper failed.'
           return done({ status: 502, body: { error: message } })
         }
@@ -59,7 +60,12 @@ function run(url: string): Promise<Outcome> {
           if (!data.job_description) {
             return done({
               status: 422,
-              body: { error: 'The scraper couldn’t find a job description on that page. It currently reads LinkedIn-style job listings.' },
+              body: {
+                error:
+                  'The scraper ran but returned an empty job_description. scraper.py only extracts text from an element with the class “show-more-less-html__markup”, and this page didn’t have one.',
+                data,
+                log: stdout.trim(),
+              },
             })
           }
           done({ status: 200, body: data })

@@ -9,6 +9,7 @@ import '../styles/MyResumes.css'
 interface MyResumesProps {
   resumes: SavedResume[]
   photoBank: BankPhoto[]
+  onPhotoBankChange: (photos: BankPhoto[]) => void
   onUpdate: (id: string, patch: Partial<Omit<SavedResume, 'id'>>) => void
   onDelete: (id: string) => void
 }
@@ -16,7 +17,7 @@ interface MyResumesProps {
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
-export default function MyResumes({ resumes, photoBank, onUpdate, onDelete }: MyResumesProps) {
+export default function MyResumes({ resumes, photoBank, onPhotoBankChange, onUpdate, onDelete }: MyResumesProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -192,6 +193,7 @@ export default function MyResumes({ resumes, photoBank, onUpdate, onDelete }: My
                   appearance={selected.appearance}
                   onAppearanceChange={(appearance) => onUpdate(selected.id, { appearance })}
                   photoBank={photoBank}
+                  onPhotoBankChange={onPhotoBankChange}
                   photoAdvice={selected.photoAdvice}
                 />
               )}

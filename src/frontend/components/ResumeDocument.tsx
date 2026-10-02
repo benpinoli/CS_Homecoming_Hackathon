@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { GeneratedResume, ResumeAppearance } from '../types'
 import { fontStack, resolveStyle } from '../lib/resumeStyles'
-import { effectivePlacement, photoWidthPt } from '../lib/photo'
+import { effectivePlacement, photoRingColor, photoWidthPt } from '../lib/photo'
 import PhotoFrame from './PhotoFrame'
 import '../styles/fonts.css'
 import '../styles/ResumeDocument.css'
@@ -120,7 +120,7 @@ export default function ResumeDocument({ resume, appearance }: { resume: Resume;
       <PhotoFrame
         photo={photo}
         width={`calc(var(--pt) * ${photoWidthPt(photo, appearance.layout)})`}
-        ringColor={st.accent}
+        ringColor={photoRingColor(appearance.layout, st.accent)}
       />
     </div>
   )
