@@ -96,3 +96,23 @@ export interface SavedResume {
   photoAdvice?: PhotoAdvice
   resume: GeneratedResume
 }
+
+/** Data Bank sections (Photos are handled separately) */
+export type DataSectionId =
+  | 'profile'
+  | 'experience'
+  | 'education'
+  | 'projects'
+  | 'skills'
+  | 'volunteer'
+  | 'certifications'
+
+/** Text fields per Data Bank section, keyed like the fields in DataManager (e.g. experience: company, position, ...) */
+export type ParsedResume = Partial<Record<DataSectionId, Array<Record<string, string>>>>
+
+/** What a resume parser hands back to the Data Bank */
+export interface ResumeImport {
+  data: ParsedResume
+  /** Things the parser wasn't sure about, shown to the user for review */
+  warnings: string[]
+}

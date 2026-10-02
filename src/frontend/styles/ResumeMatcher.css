@@ -297,3 +297,34 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
+
+/* While editing, preview and editor each scroll on their own within the viewport */
+.results-container.is-editing > .resume-section,
+.results-container.is-editing > .side-panel {
+  position: sticky;
+  top: 4.5rem;
+}
+
+.results-container.is-editing > .side-panel {
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* The preview card never scrolls: the page is sized so title, buttons and the whole page fit the window */
+.results-container.is-editing .resume-section .resume-page {
+  width: min(100%, calc((100vh - 15rem) * 0.7727));
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .results-container.is-editing > .resume-section,
+  .results-container.is-editing > .side-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .results-container.is-editing .resume-section .resume-page { width: 100%; }
+}

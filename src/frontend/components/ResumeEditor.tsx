@@ -3,6 +3,7 @@ import Field from './Field'
 import PhotoEditor from './PhotoEditor'
 import StylePicker from './StylePicker'
 import { resolveStyle } from '../lib/resumeStyles'
+import { photoRingColor } from '../lib/photo'
 import type { BankPhoto, GeneratedResume, PhotoAdvice, ResumeAppearance } from '../types'
 import '../styles/ResumeEditor.css'
 
@@ -12,6 +13,7 @@ interface ResumeEditorProps {
   appearance: ResumeAppearance
   onAppearanceChange: (appearance: ResumeAppearance) => void
   photoBank: BankPhoto[]
+  onPhotoBankChange: (photos: BankPhoto[]) => void
   photoAdvice?: PhotoAdvice
 }
 
@@ -21,7 +23,7 @@ type Education = GeneratedResume['education'][number]
 
 const blank = (v: string, msg: string) => (v.trim() ? '' : msg)
 
-export default function ResumeEditor({ resume, onChange, appearance, onAppearanceChange, photoBank, photoAdvice }: ResumeEditorProps) {
+export default function ResumeEditor({ resume, onChange, appearance, onAppearanceChange, photoBank, onPhotoBankChange, photoAdvice }: ResumeEditorProps) {
   // Skills are typed as free text and parsed on change, so keep the raw string locally
   const [skillsText, setSkillsText] = useState(resume.skills.join(', '))
 
@@ -52,9 +54,10 @@ export default function ResumeEditor({ resume, onChange, appearance, onAppearanc
           <PhotoEditor
             photo={resume.photo}
             bank={photoBank}
+            onBankChange={onPhotoBankChange}
             advice={photoAdvice}
             layout={appearance.layout}
-            accent={resolveStyle(appearance).accent}
+            ringColor={photoRingColor(appearance.layout, resolveStyle(appearance).accent)}
             onChange={(photo) => set('photo', photo)}
           />
         </div>

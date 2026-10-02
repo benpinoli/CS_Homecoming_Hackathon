@@ -101,7 +101,7 @@ function App() {
             className={`tab-button ${activeTab === 'resumes' ? 'active' : ''}`}
             onClick={() => setActiveTab('resumes')}
           >
-            My Resumes{saved.length > 0 && ` (${saved.length})`}
+            My Resumes
           </button>
           {DEV.showDemoTab && (
             <button
@@ -117,7 +117,7 @@ function App() {
       {/* All tabs stay mounted (just hidden) so in-progress work survives switching tabs */}
       <main className="app-content">
         <div hidden={activeTab !== 'matcher'}>
-          <ResumeMatcher photoBank={photos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
+          <ResumeMatcher photoBank={photos} onPhotoBankChange={updatePhotos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
         </div>
         <div hidden={activeTab !== 'data'}>
           <DataManager photos={photos} onPhotosChange={updatePhotos} />
@@ -126,6 +126,7 @@ function App() {
           <MyResumes
             resumes={saved}
             photoBank={photos}
+            onPhotoBankChange={updatePhotos}
             onUpdate={(id, patch) => updateSaved(saved.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
             onDelete={(id) => updateSaved(saved.filter((r) => r.id !== id))}
           />

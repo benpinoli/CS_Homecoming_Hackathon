@@ -13,6 +13,35 @@ export const SIDEBAR_INNER_W = 142
 export const effectivePlacement = (p: ResumePhoto, layout: LayoutId): PhotoPlacement =>
   layout === 'banner' && p.placement === 'top' ? 'left' : p.placement
 
+/** The accent color would vanish against the Banner's solid accent band, so the outline turns white there */
+export const photoRingColor = (layout: LayoutId, accent: string) => (layout === 'banner' ? '#ffffff' : accent)
+
+/**
+ * Placements that make sense for a layout. Internally 'top' means "above the name", or the top of the
+ * side panel in the Sidebar layout; the Banner has no separate "above" because it would equal "left".
+ */
+export function placementOptions(layout: LayoutId): Array<{ value: PhotoPlacement; label: string }> {
+  switch (layout) {
+    case 'banner':
+      return [
+        { value: 'left', label: 'Banner, left' },
+        { value: 'right', label: 'Banner, right' },
+      ]
+    case 'sidebar':
+      return [
+        { value: 'top', label: 'Side panel' },
+        { value: 'left', label: 'Left of name' },
+        { value: 'right', label: 'Right of name' },
+      ]
+    default:
+      return [
+        { value: 'left', label: 'Left of name' },
+        { value: 'right', label: 'Right of name' },
+        { value: 'top', label: 'Above name' },
+      ]
+  }
+}
+
 export const photoWidthPt = (p: ResumePhoto, layout: LayoutId) => {
   const w = SIZE_PT[p.size]
   return layout === 'sidebar' && effectivePlacement(p, layout) === 'top' ? Math.min(w, SIDEBAR_INNER_W) : w
@@ -48,10 +77,32 @@ export function cropStyle(p: Parameters<typeof cropView>[0]) {
   }
 }
 
-/** New focus after dragging the image by a fraction of the frame size */
-export function panBy(p: ResumePhoto, dxFrac: number, dyFrac: number) {
+export interface CropRect { x: number; y: number; w: number; h: number }
+
+/** The visible region as a rectangle in source-image pixels */
+export function cropRect(p: Parameters<typeof cropView>[0]): CropRect {
   const { vw, vh, cx, cy } = cropView(p)
-  return { fx: (cx - dxFrac * vw) / p.w, fy: (cy - dyFrac * vh) / p.h }
+  return { x: cx - vw / 2, y: cy - vh / 2, w: vw, h: vh }
+}
+
+/** Zoom range expressed as the crop rectangle's width in source pixels */
+export function cropWidthLimits(p: Pick<ResumePhoto, 'w' | 'h' | 'shape'>) {
+  const a = SHAPE_ASPECT[p.shape]
+  const base = Math.max(a / p.w, 1 / p.h)
+  return { max: a / base, min: a / (base * MAX_ZOOM) }
+}
+
+export const MAX_ZOOM = 5
+
+/** Convert a crop rectangle back into the stored zoom and focus */
+export function photoFromRect(p: Pick<ResumePhoto, 'w' | 'h' | 'shape'>, r: CropRect): Pick<ResumePhoto, 'zoom' | 'fx' | 'fy'> {
+  const a = SHAPE_ASPECT[p.shape]
+  const base = Math.max(a / p.w, 1 / p.h)
+  return {
+    zoom: Math.min(MAX_ZOOM, Math.max(1, a / (r.w * base))),
+    fx: (r.x + r.w / 2) / p.w,
+    fy: (r.y + r.h / 2) / p.h,
+  }
 }
 
 export const defaultPlacement = (layout: LayoutId): PhotoPlacement => (layout === 'sidebar' ? 'top' : 'right')

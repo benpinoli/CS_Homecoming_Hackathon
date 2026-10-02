@@ -23,4 +23,10 @@ export const DEV = {
 
 	/** Decide whether a photo is recommended for the job (src/backend/llm_app). Not hooked up yet. */
 	useRealPhotoAdvice: false,
+
+	/**
+	 * Read an uploaded resume into the Data Bank via /api/parse-resume.
+	 * Set false only to show the Jordan Smith placeholder without calling the API.
+	 */
+	useRealResumeParser: true,
 };

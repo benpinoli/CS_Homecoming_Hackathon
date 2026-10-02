@@ -12,12 +12,6 @@
   pointer-events: none;
 }
 
-.photo-frame.pannable {
-  cursor: grab;
-  touch-action: none;
-}
-.photo-frame.pannable:active { cursor: grabbing; }
-
 /* Ring is drawn inside the frame edge, matching the PDF */
 .photo-ring {
   position: absolute;

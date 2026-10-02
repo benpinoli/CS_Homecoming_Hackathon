@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
+import { pythonPath } from './python.ts'
 
 /**
  * Dev-only bridge so the browser can use src/backend/web_scraper/scraper.py.
@@ -75,7 +76,12 @@ function run(url: string): Promise<Outcome> {
           if (!data.job_description) {
             return done({
               status: 422,
-              body: { error: 'The scraper couldn’t find a job description on that page.' },
+              body: {
+                error:
+                  'The scraper ran but returned an empty job_description. scraper.py only extracts text from an element with the class “show-more-less-html__markup”, and this page didn’t have one.',
+                data,
+                log: stdout.trim(),
+              },
             })
           }
           done({ status: 200, body: data })

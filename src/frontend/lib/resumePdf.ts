@@ -1,6 +1,6 @@
 import type { FontId, GeneratedResume, ResumeAppearance } from '../types'
 import { FONTS, PAGE, resolveStyle } from './resumeStyles'
-import { effectivePlacement, photoHeightPt, photoWidthPt, renderPhotoPng } from './photo'
+import { effectivePlacement, photoHeightPt, photoRingColor, photoWidthPt, renderPhotoPng } from './photo'
 
 const BODY = 10
 const LEADING = 1.3
@@ -87,7 +87,7 @@ export async function downloadResumePdf(resume: GeneratedResume, appearance: Res
   const place = photo ? effectivePlacement(photo, appearance.layout) : null
   const pw = photo ? photoWidthPt(photo, appearance.layout) : 0
   const ph = photo ? photoHeightPt(photo, appearance.layout) : 0
-  const photoPng = photo ? await renderPhotoPng(photo, st.accent, pw) : null
+  const photoPng = photo ? await renderPhotoPng(photo, photoRingColor(appearance.layout, st.accent), pw) : null
   const drawPhoto = (x: number, y: number) => {
     if (photoPng) doc.addImage(photoPng, 'PNG', x, y, pw, ph)
   }
