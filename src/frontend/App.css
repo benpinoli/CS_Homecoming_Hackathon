@@ -267,6 +267,29 @@
   box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.18);
 }
 
+.form-group.has-warning input,
+.form-group.has-warning textarea {
+  border-color: #c9951f;
+  background: rgba(214, 160, 30, 0.12);
+}
+
+.form-group.has-warning input:focus,
+.form-group.has-warning textarea:focus { box-shadow: 0 0 0 3px rgba(201, 149, 31, 0.25); }
+
+.field-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+  color: #6b4a06;
+  background: rgba(214, 160, 30, 0.16);
+  border-left: 3px solid #c9951f;
+  border-radius: 3px;
+}
+
 .field-hint {
   font-size: 0.78rem;
   color: var(--text-muted);

@@ -29,8 +29,9 @@ export const DEV = {
 	useRealPhotoAdvice: false,
 
 	/**
-	 * Read an uploaded resume into the Data Bank via /api/parse-resume.
-	 * Set false only to show the Jordan Smith placeholder without calling the API.
+	 * Read an uploaded resume into the Data Bank via /api/parse-resume (src/parse_resume.ts, which calls Claude;
+	 * needs ANTHROPIC_API_KEY in .env.local). The parser's candidate_profile is converted to Data Bank fields by
+	 * lib/extractionToDataBank.ts. Set false only to show placeholder data without calling the API.
 	 */
 	useRealResumeParser: true,
 };

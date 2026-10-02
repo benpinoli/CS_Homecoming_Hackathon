@@ -9,7 +9,8 @@ import { DEV } from '../dev'
 import { validateJobUrl } from '../lib/validate'
 import { DEFAULT_APPEARANCE } from '../types'
 import type { BankPhoto, GeneratedResume, LayoutId, PhotoAdvice, ResumeAppearance, SavedResume, TailoringPoint } from '../types'
-import { loadBank } from '../lib/experienceBank'
+import { dataBankToFacts } from '../lib/dataBank'
+import type { DataBank } from '../lib/dataBank'
 import { generateFromConfirmedFacts } from '../lib/generateFromFacts'
 import { tailorWithLlm } from '../lib/llmTailoring'
 import type { GeneratedFromFacts } from '../lib/generateFromFacts'
@@ -19,6 +20,8 @@ import type { JobRequirement } from '../lib/requirementMatch'
 import '../styles/ResumeMatcher.css'
 
 interface ResumeMatcherProps {
+  /** Everything in the Data Bank; the resume is built from it as is */
+  dataBank: DataBank
   saved: SavedResume[]
   onSave: (entry: Omit<SavedResume, 'id' | 'savedAt'>) => void
   photoBank: BankPhoto[]
@@ -32,7 +35,7 @@ const defaultName = (url: string) => {
   return `Resume – ${host}`
 }
 
-export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankChange, onViewSaved }: ResumeMatcherProps) {
+export default function ResumeMatcher({ dataBank, saved, onSave, photoBank, onPhotoBankChange, onViewSaved }: ResumeMatcherProps) {
   const [jobUrl, setJobUrl] = useState('')
   const [jobText, setJobText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -96,7 +99,7 @@ export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankCha
       } catch {
         requirements = requirementsFromJobText(description)
       }
-      const facts = loadBank()
+      const facts = dataBankToFacts(dataBank)
       const template = loadTemplates().find((item) => item.id === loadActiveTemplateId())
       if (template && (template.id === 'centered' || template.id === 'left' || template.id === 'banner' || template.id === 'sidebar')) {
         setAppearance((current) => ({ ...current, layout: template.id as LayoutId }))
@@ -105,7 +108,7 @@ export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankCha
       const listing: ScrapedJob = { ...scraped, url: listingUrl, job_description: description }
       let generated = generateFromConfirmedFacts(facts, requirements, pageLimit)
       if (generated.factIds.length === 0) {
-        throw new Error('Confirm at least one fact in the Data Bank before generating a resume.')
+        throw new Error('There’s nothing to build a resume from yet. Add some experience or projects with a few bullet points in the Data Bank, or upload your resume there.')
       }
       if (DEV.useRealTailoring) {
         try {
@@ -131,8 +134,8 @@ export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankCha
         reusable
           ? `${reusable.name} already covers the required qualifications. You can reuse it instead of generating another.`
           : fillable.length > 0
-            ? 'Some missing requirements are supported by confirmed facts and were considered for this draft. Anything still missing stays missing.'
-            : 'Missing requirements are not supported by confirmed facts, so they were not added.',
+            ? 'Some missing requirements are covered by details in your Data Bank and were considered for this draft. Anything still missing stays missing.'
+            : 'Missing requirements aren’t covered by anything in your Data Bank, so they were not added.',
       )
       const advice = await getPhotoAdvice(listing)
       setJob(listing)

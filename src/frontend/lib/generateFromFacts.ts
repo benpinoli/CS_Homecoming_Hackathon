@@ -97,7 +97,7 @@ function assemble(facts: BankFact[], requirements: JobRequirement[]): { resume: 
     phone: first(person, 'phone'),
     location: first(person, 'location'),
     links: person.filter((fact) => /url|linkedin|github|portfolio/i.test(fact.key)).map((fact) => fact.valueText),
-    summary: '',
+    summary: first(person, 'summary'),
     experience: [],
     projects: [],
     education: [],
@@ -172,7 +172,7 @@ export function generateFromConfirmedFacts(
     estimate = pageEstimate(resume)
   }
   const problems: string[] = []
-  if (confirmed.length === 0) problems.push('No confirmed facts. Confirm facts in the Data Bank before generating.')
+  if (confirmed.length === 0) problems.push('The Data Bank is empty. Add your details or upload a resume first.')
   if (estimate > pageLimit) problems.push(`Still about ${estimate} pages after ${retries} shorten attempts. Review the layout.`)
   const joined = JSON.stringify(resume)
   if (joined.includes('{{') || joined.includes('}}')) problems.push('Unresolved template placeholders in the resume text.')
@@ -183,7 +183,7 @@ export function generateFromConfirmedFacts(
     {
       id: 'wording',
       area: 'Wording',
-      detail: 'Bullets are confirmed fact text. The layout is applied by the template, not rewritten by the model.',
+      detail: 'Bullets use your Data Bank wording as written. The layout is applied by the template, not rewritten by the model.',
     },
   ]
   for (const requirement of requirements.filter((item) => item.importance === 'required')) {
@@ -194,7 +194,7 @@ export function generateFromConfirmedFacts(
       tailoring.push({
         id: requirement.id,
         area: 'Missing requirement',
-        detail: `${requirement.label} is not supported by a confirmed fact, so it was left off the resume.`,
+        detail: `${requirement.label} isn’t mentioned in your Data Bank, so it was left off the resume.`,
       })
     }
   }
