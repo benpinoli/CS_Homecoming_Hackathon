@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 interface FieldProps {
   id: string
   label: string
@@ -7,6 +9,10 @@ interface FieldProps {
   error?: string
   /** Outline the field as a problem without showing a message */
   invalid?: boolean
+  /** Yellow outline: something worth a second look (such as a possible duplicate) */
+  warn?: boolean
+  /** Yellow note under the field (also outlines it) */
+  warning?: ReactNode
   required?: boolean
   multiline?: boolean
   rows?: number
@@ -18,7 +24,7 @@ interface FieldProps {
 }
 
 export default function Field({
-  id, label, value, onChange, onBlur, error, invalid, required, multiline, rows = 4,
+  id, label, value, onChange, onBlur, error, invalid, warn, warning, required, multiline, rows = 4,
   placeholder, hint, type = 'text', disabled, full,
 }: FieldProps) {
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined
@@ -33,7 +39,7 @@ export default function Field({
   }
 
   return (
-    <div className={`form-group${error || invalid ? ' has-error' : ''}${full ? ' full-width' : ''}`}>
+    <div className={`form-group${error || invalid ? ' has-error' : (warn || warning) ? ' has-warning' : ''}${full ? ' full-width' : ''}`}>
       <label htmlFor={id}>
         {label}
         {required && <span className="req" aria-hidden="true">*</span>}
@@ -45,6 +51,8 @@ export default function Field({
       )}
       {error ? (
         <span id={`${id}-error`} className="field-error" role="alert">{error}</span>
+      ) : warning ? (
+        <div className="field-warning" role="note">{warning}</div>
       ) : hint ? (
         <span id={`${id}-hint`} className="field-hint">{hint}</span>
       ) : null}

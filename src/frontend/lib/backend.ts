@@ -3,7 +3,6 @@ import { DUMMY_PHOTO_ADVICE, DUMMY_RESUME, DUMMY_RESUME_IMPORT, DUMMY_TAILORING 
 import { parse_resume } from '../../parse_resume.ts'
 import type { ResumeExtraction } from '../../parse_resume.ts'
 import { extractionToResumeImport } from './extractionToDataBank.ts'
-import { factsFromExtraction, type BankFact } from './experienceBank.ts'
 import { requirementsFromAnalysis, type AnalyzedRequirement, type JobRequirement } from './requirementMatch.ts'
 import type { GeneratedResume, PhotoAdvice, ResumeImport, TailoringPoint } from '../types'
 
@@ -88,15 +87,14 @@ export async function getPhotoAdvice(job: ScrapedJob): Promise<PhotoAdvice> {
 
 /**
  * Read an uploaded resume file into Data Bank entries.
- * The real parser returns an evidence-backed profile; this converts that into the form fields.
+ * The real parser returns an evidence-backed profile; extractionToDataBank.ts converts it into the form fields.
  */
-export async function parseResumeFile(file: File): Promise<ResumeImport & { facts: BankFact[] }> {
+export async function parseResumeFile(file: File): Promise<ResumeImport> {
   if (!DEV.useRealResumeParser) {
     await sleep(1500)
-    return { ...structuredClone(DUMMY_RESUME_IMPORT), facts: [] }
+    return structuredClone(DUMMY_RESUME_IMPORT)
   }
-  const extraction = await parse_resume(file)
-  return { ...extractionToResumeImport(extraction), facts: factsFromExtraction(extraction) }
+  return extractionToResumeImport(await parse_resume(file))
 }
 
 /**

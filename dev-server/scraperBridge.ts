@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
-import { pythonPath } from './python.ts'
 
 /**
  * Dev-only bridge so the browser can use src/backend/web_scraper/scraper.py.

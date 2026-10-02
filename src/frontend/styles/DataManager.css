@@ -338,3 +338,56 @@
 @media (max-width: 900px) {
   .data-main { gap: 1rem; }
 }
+
+/* ---------- Possible duplicates (yellow) ---------- */
+.nav-badge.dup {
+  color: #3b2900;
+  background: #e0ab2a;
+}
+
+.entry-card.has-dup {
+  border-color: #c9951f;
+  box-shadow: 0 0 0 1px rgba(201, 149, 31, 0.35);
+}
+
+.dup-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  color: #6b4a06;
+  background: rgba(214, 160, 30, 0.18);
+  border-left: 3px solid #c9951f;
+  border-radius: var(--radius);
+}
+
+.dup-banner strong { color: #5a3d03; }
+
+.dup-actions { display: inline-flex; gap: 0.4rem; flex-shrink: 0; }
+
+.dup-actions .btn { padding: 0.25rem 0.7rem; font-size: 0.72rem; }
+
+.field-warning .dup-actions .btn { background: rgba(255, 255, 255, 0.55); }
+
+.dup-banner .btn.danger:hover:not(:disabled),
+.field-warning .btn.danger:hover:not(:disabled) {
+  color: var(--error);
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+
+.import-replace {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.import-replace input { margin-top: 0.15rem; accent-color: var(--accent); }

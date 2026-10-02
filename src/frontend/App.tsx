@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import ResumeMatcher from './components/ResumeMatcher'
 import DataManager from './components/DataManager'
+import { loadDataBank, saveDataBank } from './lib/dataBank'
+import type { DataBank } from './lib/dataBank'
 import MyResumes from './components/MyResumes'
 import DemoPanel from './components/DemoPanel'
 import { DEV } from './dev'
@@ -51,6 +53,9 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('matcher')
   const [saved, setSaved] = useState<SavedResume[]>(loadSaved)
   const [photos, setPhotos] = useState<BankPhoto[]>(loadPhotos)
+  // The Data Bank lives here, saved between visits, so the resume generator can build from it
+  const [dataBank, setDataBank] = useState<DataBank>(loadDataBank)
+  useEffect(() => saveDataBank(dataBank), [dataBank])
   const updatePhotos = (next: BankPhoto[]) => {
     setPhotos(next)
     try {
@@ -117,10 +122,10 @@ function App() {
       {/* All tabs stay mounted (just hidden) so in-progress work survives switching tabs */}
       <main className="app-content">
         <div hidden={activeTab !== 'matcher'}>
-          <ResumeMatcher saved={saved} photoBank={photos} onPhotoBankChange={updatePhotos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
+          <ResumeMatcher dataBank={dataBank} saved={saved} photoBank={photos} onPhotoBankChange={updatePhotos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
         </div>
         <div hidden={activeTab !== 'data'}>
-          <DataManager photos={photos} onPhotosChange={updatePhotos} />
+          <DataManager data={dataBank} setData={setDataBank} photos={photos} onPhotosChange={updatePhotos} />
         </div>
         <div hidden={activeTab !== 'resumes'}>
           <MyResumes
