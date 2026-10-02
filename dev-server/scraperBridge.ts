@@ -78,7 +78,8 @@ function run(url: string): Promise<Outcome> {
               status: 422,
               body: {
                 error:
-                  'The scraper ran but returned an empty job_description. scraper.py only extracts text from an element with the class “show-more-less-html__markup”, and this page didn’t have one.',
+                  data.warning ||
+                  'The scraper ran but could not find a job description. Paste the description instead if the page requires a login or JavaScript.',
                 data,
                 log: stdout.trim(),
               },

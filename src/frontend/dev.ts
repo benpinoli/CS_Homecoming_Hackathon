@@ -16,7 +16,7 @@ export const DEV = {
 	 * Only works under `npm run dev` (the dev server runs the script, see dev-server/scraperBridge.ts)
 	 * and needs Python with `requests` and `beautifulsoup4` installed.
 	 */
-	useRealScraper: false,
+	useRealScraper: true,
 
 	/** Build the tailored resume and "How it's tailored" notes from the Data Bank + job (src/backend/llm_app). Not hooked up yet. */
 	useRealTailoring: false,

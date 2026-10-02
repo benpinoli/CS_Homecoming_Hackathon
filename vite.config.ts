@@ -62,6 +62,28 @@ export default defineConfig(({ mode }) => {
               next: Connect.NextFunction,
             ) => {
               const path = req.url?.split('?')[0]
+              if (path === '/api/analyze-job' && req.method === 'POST') {
+                try {
+                  const rawBody = await readJsonBody(req)
+                  const payload = JSON.parse(rawBody) as { job_description?: string }
+                  if (!payload.job_description?.trim()) {
+                    sendJson(res, 400, { error: 'Job description is empty.' })
+                    return
+                  }
+                  const { analyzeJobDescription, loadResumeParserEnv } = await import(
+                    './src/parse_resume_server.ts'
+                  )
+                  const result = await analyzeJobDescription(
+                    payload.job_description,
+                    loadResumeParserEnv(projectRoot, server.config.mode ?? mode),
+                  )
+                  sendJson(res, 200, result)
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : 'Job analysis failed.'
+                  sendJson(res, 500, { error: message })
+                }
+                return
+              }
               if (path !== '/api/parse-resume' || req.method !== 'POST') {
                 next()
                 return

@@ -95,6 +95,12 @@ export interface SavedResume {
   appearance: ResumeAppearance
   photoAdvice?: PhotoAdvice
   resume: GeneratedResume
+  /** Keywords actually written on this resume, each tied to the bullet that contains them. */
+  keywordBank?: Array<{ keyword: string; bulletText: string; factIds: string[] }>
+  templateId?: string
+  templateVersion?: number
+  factIds?: string[]
+  validation?: { ok: boolean; problems: string[]; pageEstimate: number; retries: number }
 }
 
 /** Data Bank sections (Photos are handled separately) */
