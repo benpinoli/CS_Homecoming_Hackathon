@@ -23,5 +23,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["src/parse_resume_server.ts"]
+  "exclude": ["src/parse_resume_server.ts", "src/resume_pipeline_debug.ts"]
 }

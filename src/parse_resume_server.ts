@@ -10,7 +10,16 @@ import { jsonrepair } from 'jsonrepair'
 import { loadEnv } from 'vite'
 
 import type { ParseResumeApiRequest, ResumeExtraction } from './parse_resume.ts'
-import { normalizeResumeExtraction } from './resume_extraction_validate.ts'
+import { writePipelineDebug } from './resume_pipeline_debug.ts'
+import {
+  normalizeResumeExtraction,
+  type FactChange,
+} from './resume_extraction_validate.ts'
+
+export const CONFIGURED_PARSER_MODELS = {
+  haiku: 'claude-haiku-4-5',
+  sonnet: 'claude-sonnet-4-6',
+} as const
 
 type AnthropicMessageResponse = {
   content?: Array<{ type: string; text?: string }>
@@ -111,21 +120,28 @@ async function callAnthropicMessages(
   systemPrompt: string,
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
 ): Promise<AnthropicMessageResponse> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': ANTHROPIC_API_VERSION,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      temperature: 0,
-      system: systemPrompt,
-      messages,
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': ANTHROPIC_API_VERSION,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        temperature: 0,
+        system: systemPrompt,
+        messages,
+      }),
+    })
+  } catch (error) {
+    const cause = error instanceof Error && 'cause' in error ? String(error.cause) : ''
+    const message = error instanceof Error ? error.message : 'fetch failed'
+    throw new Error(cause ? `${message}: ${cause}` : message)
+  }
 
   const raw = await response.text()
   if (!response.ok) {
@@ -265,11 +281,30 @@ export async function runResumeParserOnServer(
   )
   let content = readTextFromAnthropicResponse(completion)
 
+  const finish = (modelText: string, stopReason: string | null | undefined) => {
+    const parsed = parseJsonFromModelText(modelText, stopReason)
+    const factChanges: FactChange[] = []
+    const finalJson = normalizeResumeExtraction(parsed, payload, factChanges)
+    if (env.RESUME_PARSER_DEBUG !== '0') {
+      writePipelineDebug({
+        input_blocks: payload.sources,
+        ingestion_unprocessed_blocks: payload.ingestion_unprocessed_blocks ?? [],
+        system_prompt: systemPrompt,
+        user_prompt: userMessage,
+        model,
+        generation: { temperature: 0, max_tokens: maxTokens },
+        stop_reason: stopReason ?? null,
+        raw_model_response: modelText,
+        parsed_json: parsed,
+        final_json: finalJson,
+        fact_changes: factChanges,
+      })
+    }
+    return finalJson
+  }
+
   try {
-    return normalizeResumeExtraction(
-      parseJsonFromModelText(content, completion.stop_reason),
-      payload,
-    )
+    return finish(content, completion.stop_reason)
   } catch (firstError) {
     if (!(firstError instanceof Error)) {
       throw firstError
@@ -295,10 +330,7 @@ export async function runResumeParserOnServer(
     )
     content = readTextFromAnthropicResponse(completion)
     try {
-      return normalizeResumeExtraction(
-        parseJsonFromModelText(content, completion.stop_reason),
-        payload,
-      )
+      return finish(content, completion.stop_reason)
     } catch {
       throw firstError
     }
