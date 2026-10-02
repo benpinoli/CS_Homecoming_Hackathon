@@ -1,5 +1,13 @@
 /// <reference types="vite/client" />
 
+import {
+  blocksFromPdfTextItems,
+  segmentResumeIntoBlocks,
+  type PdfTextItem,
+} from './resume_ingest.ts'
+
+export { segmentResumeIntoBlocks }
+
 /**
  * Resume parsing entry point for the frontend.
  *
@@ -27,6 +35,8 @@ export type ParseResumeApiRequest = {
   person_entity_id: string
   captured_at: string
   sources: ResumeInputSource[]
+  /** Locators with no extractable text, such as a blank PDF page. */
+  ingestion_unprocessed_blocks?: string[]
 }
 
 export type UnmappedPassage = {
@@ -101,6 +111,7 @@ export class ParseResumeError extends Error {
 }
 
 const TEXT_EXTENSIONS = new Set(['.txt', '.text', '.md', '.markdown'])
+const PDF_EXTENSION = '.pdf'
 
 const DEFAULT_API_URL =
   (import.meta.env.VITE_PARSE_RESUME_API_URL as string | undefined) ??
@@ -118,87 +129,77 @@ function extensionOf(fileName: string): string {
   return dot >= 0 ? fileName.slice(dot).toLowerCase() : ''
 }
 
-async function readResumeText(file: File): Promise<string> {
+async function readPdfBlocks(file: File): Promise<{
+  blocks: ResumeSourceBlock[]
+  unreadableLocators: string[]
+}> {
+  const pdfjs = await import('pdfjs-dist')
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString()
+
+  const data = new Uint8Array(await file.arrayBuffer())
+  const document = await pdfjs.getDocument({ data }).promise
+  const pages: PdfTextItem[][] = []
+
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
+    const page = await document.getPage(pageNumber)
+    const content = await page.getTextContent()
+    const items: PdfTextItem[] = []
+    for (const item of content.items) {
+      if (!('str' in item) || !item.str.trim()) {
+        continue
+      }
+      const transform = item.transform
+      items.push({
+        str: item.str,
+        x: transform[4] ?? 0,
+        y: transform[5] ?? 0,
+      })
+    }
+    pages.push(items)
+  }
+
+  return blocksFromPdfTextItems(pages)
+}
+
+async function readResumeBlocks(file: File): Promise<{
+  blocks: ResumeSourceBlock[]
+  unreadableLocators: string[]
+}> {
   const ext = extensionOf(file.name)
+  if (ext === PDF_EXTENSION) {
+    const ingested = await readPdfBlocks(file)
+    if (ingested.blocks.length === 0) {
+      throw new ParseResumeError(
+        'No readable text found in the resume. Scanned PDFs may need OCR.',
+      )
+    }
+    return ingested
+  }
   if (!TEXT_EXTENSIONS.has(ext)) {
     throw new ParseResumeError(
       `Unsupported resume format "${ext || '(no extension)'}". ` +
-        `Supported for now: ${[...TEXT_EXTENSIONS].join(', ')}.`,
+        `Supported: ${[...TEXT_EXTENSIONS, PDF_EXTENSION].join(', ')}.`,
     )
   }
   const text = await file.text()
-  if (!text.trim()) {
+  const blocks = segmentResumeIntoBlocks(text)
+  if (blocks.length === 0) {
     throw new ParseResumeError('Resume file is empty.')
   }
-  return text
-}
-
-/**
- * Split resume plain text into locator-tagged blocks for the parser prompt.
- * Supports kit-style lines like `[experience_01] …` and falls back to paragraphs.
- */
-export function segmentResumeIntoBlocks(text: string): ResumeSourceBlock[] {
-  const normalized = text.replace(/\r\n/g, '\n').trim()
-  const lines = normalized.split('\n')
-  const bracketPattern = /^\[([^\]]+)\]\s*(.*)$/
-
-  const blocks: ResumeSourceBlock[] = []
-  let current: ResumeSourceBlock | null = null
-
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed) {
-      continue
-    }
-
-    const bracketMatch = bracketPattern.exec(trimmed)
-    if (bracketMatch) {
-      if (current) {
-        blocks.push(current)
-      }
-      const [, locator, rest] = bracketMatch
-      current = {
-        locator,
-        text: rest.trim() || trimmed,
-      }
-      continue
-    }
-
-    if (current) {
-      current.text = `${current.text}\n${trimmed}`
-    } else {
-      current = {
-        locator: `line_${blocks.length + 1}`,
-        text: trimmed,
-      }
-    }
-  }
-
-  if (current) {
-    blocks.push(current)
-  }
-
-  if (blocks.length > 0) {
-    return blocks
-  }
-
-  return normalized
-    .split(/\n{2,}/)
-    .map((paragraph, index) => ({
-      locator: `paragraph_${index + 1}`,
-      text: paragraph.trim(),
-    }))
-    .filter((block) => block.text.length > 0)
+  return { blocks, unreadableLocators: [] }
 }
 
 export function buildParseResumeRequest(
   fileName: string,
-  text: string,
+  blocks: ResumeSourceBlock[],
   ids?: Pick<ParseResumeOptions, 'profileId' | 'personEntityId' | 'capturedAt'>,
+  unreadableLocators: string[] = [],
 ): ParseResumeApiRequest {
   const capturedAt = ids?.capturedAt ?? new Date().toISOString()
   const sourceId = createId('source_resume')
-  const blocks = segmentResumeIntoBlocks(text)
 
   if (blocks.length === 0) {
     throw new ParseResumeError('No readable content found in the resume.')
@@ -208,6 +209,7 @@ export function buildParseResumeRequest(
     profile_id: ids?.profileId ?? createId('profile'),
     person_entity_id: ids?.personEntityId ?? createId('person'),
     captured_at: capturedAt,
+    ingestion_unprocessed_blocks: unreadableLocators,
     sources: [
       {
         source_id: sourceId,
@@ -246,8 +248,13 @@ export async function parse_resume(
           type: 'text/plain',
         })
 
-  const text = await readResumeText(file)
-  const payload = buildParseResumeRequest(file.name, text, options)
+  const ingested = await readResumeBlocks(file)
+  const payload = buildParseResumeRequest(
+    file.name,
+    ingested.blocks,
+    options,
+    ingested.unreadableLocators,
+  )
   const apiUrl = options.apiUrl ?? DEFAULT_API_URL
 
   let response: Response

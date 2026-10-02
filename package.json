@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "node --experimental-strip-types --test tests/resume_extraction_validate.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
+    "jsonrepair": "^3.15.0",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

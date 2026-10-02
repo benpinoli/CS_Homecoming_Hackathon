@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
+import { parse_resume, ParseResumeError } from '../parse_resume.ts'
 import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
@@ -8,21 +9,41 @@ function App() {
   const [count, setCount] = useState(0)
   const [parseResult, setParseResult] = useState<unknown | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleTestParseResume = async () => {
+  const runParse = async (file: File) => {
     setIsLoading(true)
+    setParseResult(null)
+    setSelectedFileName(file.name)
     try {
-      const response = await fetch('/backend/resume_json_builder/ParseResume.ts')
-      if (!response.ok) {
-        throw new Error('Failed to call parseResume')
-      }
-      const result = await response.json()
+      const result = await parse_resume(file)
       setParseResult(result)
     } catch (error) {
-      setParseResult({ error: String(error) })
+      if (error instanceof ParseResumeError) {
+        setParseResult({
+          error: error.message,
+          status: error.status,
+        })
+      } else {
+        setParseResult({ error: String(error) })
+      }
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handlePickResume = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleResumeSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+    await runParse(file)
+    event.target.value = ''
   }
 
   return (
@@ -46,14 +67,39 @@ function App() {
         >
           Count is {count}
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.text,.md,.markdown,.pdf"
+          onChange={handleResumeSelected}
+          style={{ display: 'none' }}
+          aria-hidden
+        />
         <button
           type="button"
-          onClick={handleTestParseResume}
+          onClick={handlePickResume}
           disabled={isLoading}
           style={{ marginLeft: '10px' }}
         >
-          {isLoading ? 'Testing...' : 'Test parseResume'}
+          {isLoading ? 'Parsing…' : 'Parse resume'}
         </button>
+        <p
+          style={{
+            marginTop: '12px',
+            fontSize: '0.85rem',
+            maxWidth: '28rem',
+            opacity: 0.85,
+          }}
+        >
+          Choose a <strong>.pdf</strong> or <strong>.txt</strong> resume. Set{' '}
+          <code>ANTHROPIC_API_KEY=&quot;sk-ant-...&quot;</code> in{' '}
+          <code>.env.local</code> at the project root (plain line, not JSON).
+        </p>
+        {selectedFileName && (
+          <p style={{ marginTop: '8px', fontSize: '0.9rem' }}>
+            {isLoading ? 'Parsing' : 'Last file'}: {selectedFileName}
+          </p>
+        )}
         {parseResult !== null && (
           <pre style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', maxHeight: '400px', overflow: 'auto' }}>
             {JSON.stringify(parseResult, null, 2)}

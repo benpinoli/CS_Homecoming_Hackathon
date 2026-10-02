@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { defineConfig, loadEnv, type ViteDevServer } from 'vite'
+import { defineConfig, type ViteDevServer } from 'vite'
 import type { Connect } from 'vite'
 
 function readJsonBody(req: IncomingMessage): Promise<string> {
@@ -20,52 +20,82 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
-
   return {
-    plugins: [react()],
-    configureServer(server: ViteDevServer) {
-      server.middlewares.use(
-        async (
-          req: Connect.IncomingMessage,
-          res: ServerResponse,
-          next: Connect.NextFunction,
-        ) => {
-        if (req.url !== '/api/parse-resume' || req.method !== 'POST') {
-          next()
-          return
-        }
-
-        try {
-          const rawBody = await readJsonBody(req)
-          const payload = JSON.parse(rawBody) as import('./src/parse_resume.ts').ParseResumeApiRequest
-
-          if (
-            !payload?.profile_id ||
-            !payload?.person_entity_id ||
-            !payload?.captured_at ||
-            !Array.isArray(payload?.sources) ||
-            payload.sources.length === 0
-          ) {
-            sendJson(res, 400, { error: 'Invalid parse-resume request payload.' })
-            return
-          }
-
-          const { runResumeParserOnServer } = await import(
-            './src/parse_resume_server.ts'
+    plugins: [
+      react(),
+      {
+        name: 'parse-resume-api',
+        configureServer(server: ViteDevServer) {
+          const projectRoot = server.config.root ?? process.cwd()
+          void import('./src/parse_resume_server.ts').then(
+            ({ anthropicApiKeyStatus, loadResumeParserEnv }) => {
+              const status = anthropicApiKeyStatus(
+                loadResumeParserEnv(projectRoot, server.config.mode),
+              )
+              if (status.loaded) {
+                console.log(
+                  `[parse-resume] ANTHROPIC_API_KEY loaded (${status.length} chars)`,
+                )
+              } else {
+                console.warn(
+                  '[parse-resume] ANTHROPIC_API_KEY not found in .env.local — parsing will fail until you add it.',
+                )
+              }
+            },
           )
-          const result = await runResumeParserOnServer(payload, {
-            ...process.env,
-            ...env,
-          })
-          sendJson(res, 200, result)
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : 'Resume parsing failed.'
-          sendJson(res, 500, { error: message })
-        }
+
+          server.middlewares.use(
+            async (
+              req: Connect.IncomingMessage,
+              res: ServerResponse,
+              next: Connect.NextFunction,
+            ) => {
+              const path = req.url?.split('?')[0]
+              if (path !== '/api/parse-resume' || req.method !== 'POST') {
+                next()
+                return
+              }
+
+              try {
+                const rawBody = await readJsonBody(req)
+                const payload = JSON.parse(rawBody) as import('./src/parse_resume.ts').ParseResumeApiRequest
+
+                if (
+                  !payload?.profile_id ||
+                  !payload?.person_entity_id ||
+                  !payload?.captured_at ||
+                  !Array.isArray(payload?.sources) ||
+                  payload.sources.length === 0
+                ) {
+                  sendJson(res, 400, {
+                    error: 'Invalid parse-resume request payload.',
+                  })
+                  return
+                }
+
+                const { runResumeParserOnServer } = await import(
+                  './src/parse_resume_server.ts'
+                )
+                const { loadResumeParserEnv } = await import(
+                  './src/parse_resume_server.ts'
+                )
+                const parserEnv = loadResumeParserEnv(
+                  server.config.root ?? process.cwd(),
+                  server.config.mode ?? mode,
+                )
+                const result = await runResumeParserOnServer(payload, parserEnv)
+                sendJson(res, 200, result)
+              } catch (error) {
+                const message =
+                  error instanceof Error
+                    ? error.message
+                    : 'Resume parsing failed.'
+                sendJson(res, 500, { error: message })
+              }
+            },
+          )
+        },
       },
-      )
-    },
+    ],
   }
 })

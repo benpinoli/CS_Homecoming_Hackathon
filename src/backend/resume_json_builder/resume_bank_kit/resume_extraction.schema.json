@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Evidence-backed resume bank v1",
+  "description": "Schema 1.0 remains compatible. Fact keys are open. Conventions added without a version bump: listed_date, listed_coursework, associated_organization, proposed_related_experience_id, source_platform, and repeated multi-value keys. Consumers must not index facts by key alone. Confirmation still cannot be set by the parser.",
   "type": "object",
   "additionalProperties": false,
   "required": [
