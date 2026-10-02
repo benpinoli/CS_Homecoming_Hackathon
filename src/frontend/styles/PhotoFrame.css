@@ -1,0 +1,27 @@
+.photo-frame {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #cfd5de;
+}
+
+.photo-frame img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.photo-frame.pannable {
+  cursor: grab;
+  touch-action: none;
+}
+.photo-frame.pannable:active { cursor: grabbing; }
+
+/* Ring is drawn inside the frame edge, matching the PDF */
+.photo-ring {
+  position: absolute;
+  inset: 0;
+  border: calc(var(--fw) * 0.025) solid var(--ring);
+  pointer-events: none;
+}

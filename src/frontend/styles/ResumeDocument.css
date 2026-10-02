@@ -1,0 +1,146 @@
+/*
+ * US Letter page. The wrapper is a size container, and every length below is
+ * expressed in "points" of a 612pt-wide page (--pt), so the preview is
+ * proportionally identical to the generated PDF at any width.
+ */
+.resume-page {
+  container-type: inline-size;
+  width: 100%;
+}
+
+.resume-paper {
+  --pt: calc(100cqw / 612);
+  aspect-ratio: 8.5 / 11; /* grows past this if the content needs a second page */
+  background: #fdfdfe;
+  color: var(--ink);
+  font-family: var(--paper-font);
+  font-size: calc(var(--pt) * 10);
+  line-height: 1.3;
+  padding: calc(var(--pt) * 54);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--line-strong), 0 12px 32px rgba(22, 40, 70, 0.18);
+}
+
+.resume-paper h1 {
+  font-family: inherit;
+  font-size: calc(var(--pt) * 20);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.resume-paper h3 {
+  font-family: inherit;
+  font-size: calc(var(--pt) * 10.5);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-bottom: calc(var(--pt) * 2);
+  margin: calc(var(--pt) * 12) 0 calc(var(--pt) * 4);
+}
+
+.resume-paper strong { font-weight: 700; }
+
+/* ---------- Headers ---------- */
+.header-center .paper-header { text-align: center; }
+.header-center h1,
+.header-band h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.header-left .paper-header {
+  text-align: left;
+}
+.header-left h1 {
+  font-size: calc(var(--pt) * 22);
+  color: var(--accent);
+}
+.layout-single.header-left .paper-header {
+  padding-bottom: calc(var(--pt) * 6);
+  border-bottom: calc(var(--pt) * 2) solid var(--accent);
+}
+
+.header-band .paper-header {
+  background: var(--accent);
+  color: #fff;
+  margin: calc(var(--pt) * -54) calc(var(--pt) * -54) 0;
+  padding: calc(var(--pt) * 30) calc(var(--pt) * 54) calc(var(--pt) * 18);
+}
+.header-band h1 {
+  font-size: calc(var(--pt) * 22);
+  color: #fff;
+}
+.header-band .paper-contact { color: #e8ecf2; }
+
+.paper-contact {
+  margin-top: calc(var(--pt) * 4);
+  font-size: calc(var(--pt) * 9);
+  color: var(--muted);
+}
+
+/* ---------- Section heading variants ---------- */
+.heading-rule h3 { border-bottom: calc(var(--pt) * 0.6) solid var(--ink); }
+.heading-accent-rule h3 { border-bottom: calc(var(--pt) * 1) solid var(--accent); }
+.heading-plain h3 { border-bottom: none; letter-spacing: 0.14em; }
+
+/* ---------- Entries ---------- */
+.paper-entry { margin-bottom: calc(var(--pt) * 5); }
+
+.paper-row {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--pt) * 12);
+}
+.paper-row span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.paper-sub {
+  font-style: italic;
+  color: var(--muted);
+}
+.paper-muted { color: var(--muted); }
+
+.resume-paper ul { padding-left: calc(var(--pt) * 14); }
+.resume-paper ul.paper-plain-list { list-style: none; padding-left: 0; }
+
+/* ---------- Sidebar layout ---------- */
+.layout-sidebar {
+  display: grid;
+  grid-template-columns: 190fr 422fr;
+  padding: 0;
+  background: linear-gradient(90deg, var(--side-bg) 0 31.046%, #fdfdfe 31.046%);
+}
+
+.paper-side {
+  padding: calc(var(--pt) * 44) calc(var(--pt) * 24);
+  font-size: calc(var(--pt) * 9.5);
+}
+.paper-side section:first-child h3 { margin-top: 0; }
+
+.paper-main {
+  padding: calc(var(--pt) * 44) calc(var(--pt) * 40) calc(var(--pt) * 44) calc(var(--pt) * 28);
+}
+
+/* ---------- Photo ---------- */
+.paper-photo { flex-shrink: 0; line-height: 0; color: var(--accent); }
+
+.paper-header.has-photo {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--pt) * 16);
+}
+.paper-header.has-photo .paper-header-text { flex: 1; min-width: 0; }
+
+.paper-header.photo-top {
+  flex-direction: column;
+  gap: calc(var(--pt) * 8);
+}
+.header-center .paper-header.photo-top { align-items: center; }
+.header-band .paper-header.photo-top { align-items: flex-start; }
+
+/* Sidebar: photo sits above the contact section; the following heading supplies the gap */
+.paper-side > .paper-photo { margin-bottom: 0; }
