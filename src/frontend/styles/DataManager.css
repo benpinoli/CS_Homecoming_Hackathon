@@ -9,6 +9,8 @@
 .data-sidebar {
   position: sticky;
   top: 4.5rem;
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);

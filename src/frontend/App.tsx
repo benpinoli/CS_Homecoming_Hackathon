@@ -6,7 +6,7 @@ import MyResumes from './components/MyResumes'
 import DemoPanel from './components/DemoPanel'
 import { DEV } from './dev'
 import { DEFAULT_APPEARANCE } from './types'
-import type { BankPhoto, GeneratedResume, PhotoAdvice, ResumeAppearance, SavedResume } from './types'
+import type { BankPhoto, SavedResume } from './types'
 
 type Tab = 'matcher' | 'data' | 'resumes' | 'demo'
 
@@ -65,9 +65,9 @@ function App() {
     } catch { /* storage unavailable; keep in memory */ }
   }
 
-  const saveResume = (name: string, jobUrl: string, appearance: ResumeAppearance, resume: GeneratedResume, photoAdvice?: PhotoAdvice) =>
+  const saveResume = (entry: Omit<SavedResume, 'id' | 'savedAt'>) =>
     updateSaved([
-      { id: Date.now().toString(), name, jobUrl, appearance, photoAdvice, resume, savedAt: new Date().toISOString() },
+      { ...entry, id: Date.now().toString(), savedAt: new Date().toISOString() },
       ...saved,
     ])
 
@@ -117,7 +117,7 @@ function App() {
       {/* All tabs stay mounted (just hidden) so in-progress work survives switching tabs */}
       <main className="app-content">
         <div hidden={activeTab !== 'matcher'}>
-          <ResumeMatcher photoBank={photos} onPhotoBankChange={updatePhotos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
+          <ResumeMatcher saved={saved} photoBank={photos} onPhotoBankChange={updatePhotos} onSave={saveResume} onViewSaved={() => setActiveTab('resumes')} />
         </div>
         <div hidden={activeTab !== 'data'}>
           <DataManager photos={photos} onPhotosChange={updatePhotos} />

@@ -335,3 +335,40 @@ export async function runResumeParserOnServer(
     }
   }
 }
+
+export async function analyzeJobDescription(
+  description: string,
+  env: NodeJS.ProcessEnv,
+): Promise<{ requirements: unknown[] }> {
+  const apiKey = readAnthropicApiKey(env)
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is missing in .env.local, so job keywords cannot be extracted.')
+  }
+  const promptPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    'backend/llm_app/app/prompts/job_analysis_system.md',
+  )
+  const system = [
+    readFileSync(promptPath, 'utf8'),
+    '',
+    'Return one JSON object and no markdown.',
+    'Shape: {"requirements":[{"label":"string","importance":"required|preferred|nice_to_have","alternatives":["exact skill or tool"],"min_years":null}]}',
+    'Put each "A or B" skill in alternatives of one requirement. Set min_years only when the posting states a number of years.',
+    'Use the posting’s exact spelling. Omit generic traits such as teamwork unless the posting lists them as a qualification.',
+  ].join('\n')
+  const completion = await callAnthropicMessages(
+    apiKey,
+    env.RESUME_PARSER_MODEL ?? 'claude-haiku-4-5',
+    4000,
+    system,
+    [{ role: 'user', content: `<job_posting>\n${description.slice(0, 20000)}\n</job_posting>` }],
+  )
+  const text = readTextFromAnthropicResponse(completion)
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start < 0 || end <= start) {
+    throw new Error('Job analysis did not return JSON.')
+  }
+  const parsed = JSON.parse(jsonrepair(text.slice(start, end + 1))) as { requirements?: unknown[] }
+  return { requirements: Array.isArray(parsed.requirements) ? parsed.requirements : [] }
+}

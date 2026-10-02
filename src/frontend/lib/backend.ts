@@ -3,6 +3,8 @@ import { DUMMY_PHOTO_ADVICE, DUMMY_RESUME, DUMMY_RESUME_IMPORT, DUMMY_TAILORING 
 import { parse_resume } from '../../parse_resume.ts'
 import type { ResumeExtraction } from '../../parse_resume.ts'
 import { extractionToResumeImport } from './extractionToDataBank.ts'
+import { factsFromExtraction, type BankFact } from './experienceBank.ts'
+import { requirementsFromAnalysis, type AnalyzedRequirement, type JobRequirement } from './requirementMatch.ts'
 import type { GeneratedResume, PhotoAdvice, ResumeImport, TailoringPoint } from '../types'
 
 /** What web_scraper/scraper.py produces (job_posting.json) */
@@ -40,6 +42,23 @@ export async function scrapeJobReal(url: string): Promise<ScrapedJob> {
   return body as ScrapedJob
 }
 
+/** Structured requirements from the scraped or pasted description. Throws if the model call fails. */
+export async function analyzeJobKeywords(description: string): Promise<JobRequirement[]> {
+  let res: Response
+  try {
+    res = await fetch('/api/analyze-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_description: description }),
+    })
+  } catch {
+    throw new Error('Couldn’t reach job analysis. Make sure the app is running with `npm run dev`.')
+  }
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.error ?? `Job analysis failed (HTTP ${res.status}).`)
+  return requirementsFromAnalysis((body?.requirements ?? []) as AnalyzedRequirement[])
+}
+
 /** Job listing text for a URL: real or placeholder depending on dev.ts. */
 export async function fetchJobListing(url: string): Promise<ScrapedJob> {
   if (DEV.useRealScraper) return scrapeJobReal(url)
@@ -66,12 +85,13 @@ export async function getPhotoAdvice(job: ScrapedJob): Promise<PhotoAdvice> {
  * Read an uploaded resume file into Data Bank entries.
  * The real parser returns an evidence-backed profile; this converts that into the form fields.
  */
-export async function parseResumeFile(file: File): Promise<ResumeImport> {
+export async function parseResumeFile(file: File): Promise<ResumeImport & { facts: BankFact[] }> {
   if (!DEV.useRealResumeParser) {
     await sleep(1500)
-    return structuredClone(DUMMY_RESUME_IMPORT)
+    return { ...structuredClone(DUMMY_RESUME_IMPORT), facts: [] }
   }
-  return extractionToResumeImport(await parse_resume(file))
+  const extraction = await parse_resume(file)
+  return { ...extractionToResumeImport(extraction), facts: factsFromExtraction(extraction) }
 }
 
 /**

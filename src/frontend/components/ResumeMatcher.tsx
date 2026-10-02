@@ -3,16 +3,23 @@ import Field from './Field'
 import ResumeDocument from './ResumeDocument'
 import ResumeEditor from './ResumeEditor'
 import { downloadResumePdf } from '../lib/resumePdf'
-import { fetchJobListing, getPhotoAdvice, tailorResume } from '../lib/backend'
+import { analyzeJobKeywords, getPhotoAdvice, scrapeJobReal } from '../lib/backend'
 import type { ScrapedJob } from '../lib/backend'
 import { DEV } from '../dev'
 import { validateJobUrl } from '../lib/validate'
 import { DEFAULT_APPEARANCE } from '../types'
-import type { BankPhoto, GeneratedResume, PhotoAdvice, ResumeAppearance, TailoringPoint } from '../types'
+import type { BankPhoto, GeneratedResume, LayoutId, PhotoAdvice, ResumeAppearance, SavedResume, TailoringPoint } from '../types'
+import { loadBank } from '../lib/experienceBank'
+import { generateFromConfirmedFacts } from '../lib/generateFromFacts'
+import type { GeneratedFromFacts } from '../lib/generateFromFacts'
+import { loadActiveTemplateId, loadTemplates } from '../lib/docxTemplate'
+import { gapsFillableFromConfirmed, requirementsFromJobText, splitMatches } from '../lib/requirementMatch'
+import type { JobRequirement } from '../lib/requirementMatch'
 import '../styles/ResumeMatcher.css'
 
 interface ResumeMatcherProps {
-  onSave: (name: string, jobUrl: string, appearance: ResumeAppearance, resume: GeneratedResume, photoAdvice?: PhotoAdvice) => void
+  saved: SavedResume[]
+  onSave: (entry: Omit<SavedResume, 'id' | 'savedAt'>) => void
   photoBank: BankPhoto[]
   onPhotoBankChange: (photos: BankPhoto[]) => void
   onViewSaved: () => void
@@ -24,8 +31,9 @@ const defaultName = (url: string) => {
   return `Resume – ${host}`
 }
 
-export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, onViewSaved }: ResumeMatcherProps) {
+export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankChange, onViewSaved }: ResumeMatcherProps) {
   const [jobUrl, setJobUrl] = useState('')
+  const [jobText, setJobText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [resume, setResume] = useState<GeneratedResume | null>(null)
@@ -41,11 +49,17 @@ export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, on
   const [saveName, setSaveName] = useState('')
   const [saveError, setSaveError] = useState('')
   const [justSaved, setJustSaved] = useState(false)
+  const [pack, setPack] = useState<GeneratedFromFacts | null>(null)
+  const [reuseNote, setReuseNote] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const problem = validateJobUrl(jobUrl)
+    if (!jobUrl.trim() && !jobText.trim()) {
+      setError('Paste a job link or the job description.')
+      return
+    }
+    const problem = jobUrl.trim() ? validateJobUrl(jobUrl) : ''
     setUrlError(problem)
     if (problem) return
     setSaving(false)
@@ -61,11 +75,55 @@ export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, on
     setIsLoading(true)
 
     try {
-      const listing = await fetchJobListing(jobUrl.trim())
-      const [result, advice] = await Promise.all([tailorResume(listing), getPhotoAdvice(listing)])
+      let description = jobText.trim()
+      let listingUrl = jobUrl.trim()
+      if (listingUrl) {
+        const scraped = await scrapeJobReal(listingUrl)
+        if (scraped.job_description.trim()) {
+          description = scraped.job_description.trim()
+          setJobText(description)
+        }
+      }
+      if (!description) {
+        throw new Error('No job description was found. Paste the posting text and try again.')
+      }
+      let requirements: JobRequirement[]
+      try {
+        requirements = await analyzeJobKeywords(description)
+        if (requirements.length === 0) requirements = requirementsFromJobText(description)
+      } catch {
+        requirements = requirementsFromJobText(description)
+      }
+      const facts = loadBank()
+      const template = loadTemplates().find((item) => item.id === loadActiveTemplateId())
+      if (template && (template.id === 'centered' || template.id === 'left' || template.id === 'banner' || template.id === 'sidebar')) {
+        setAppearance((current) => ({ ...current, layout: template.id as LayoutId }))
+      }
+      const generated = generateFromConfirmedFacts(facts, requirements, template?.pageLimit ?? 1)
+      if (generated.factIds.length === 0) {
+        throw new Error('Confirm at least one fact in the Data Bank before generating a resume.')
+      }
+      const reusable = saved.find((item) => {
+        const match = splitMatches(requirements, item.keywordBank ?? [])
+        return (item.keywordBank?.length ?? 0) > 0 && match.requiredMissing.length === 0
+      })
+      const fillable = gapsFillableFromConfirmed(
+        splitMatches(requirements, generated.keywordBank).requiredMissing,
+        facts.filter((fact) => fact.assertion_status === 'confirmed').map((fact) => ({ factId: fact.id, text: fact.valueText })),
+      )
+      setReuseNote(
+        reusable
+          ? `${reusable.name} already covers the required qualifications. You can reuse it instead of generating another.`
+          : fillable.length > 0
+            ? 'Some missing requirements are supported by confirmed facts and were considered for this draft. Anything still missing stays missing.'
+            : 'Missing requirements are not supported by confirmed facts, so they were not added.',
+      )
+      const listing: ScrapedJob = { url: listingUrl, job_description: description }
+      const advice = await getPhotoAdvice(listing)
       setJob(listing)
-      setResume(result.resume)
-      setTailoring(result.tailoring)
+      setPack(generated)
+      setResume(generated.resume)
+      setTailoring(generated.tailoring)
       setPhotoAdvice(advice)
       setRunId((n) => n + 1)
     } catch (err) {
@@ -104,7 +162,18 @@ export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, on
       return
     }
     if (!resume) return
-    onSave(saveName.trim(), jobUrl.trim(), appearance, resume, photoAdvice)
+    onSave({
+      name: saveName.trim(),
+      jobUrl: jobUrl.trim(),
+      appearance,
+      photoAdvice,
+      resume,
+      keywordBank: pack?.keywordBank ?? [],
+      templateId: loadActiveTemplateId(),
+      templateVersion: loadTemplates().find((item) => item.id === loadActiveTemplateId())?.version ?? 1,
+      factIds: pack?.factIds ?? [],
+      validation: pack?.validation,
+    })
     setSaving(false)
     setJustSaved(true)
   }
@@ -118,7 +187,6 @@ export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, on
           label="Job Listing URL"
           type="url"
           value={jobUrl}
-          required
           error={urlError}
           disabled={leaving}
           placeholder="https://company.com/careers/job-title"
@@ -126,6 +194,17 @@ export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, on
             setJobUrl(v)
             if (urlError) setUrlError('')
           }}
+        />
+        <Field
+          id="job-text"
+          label="Job description"
+          multiline
+          rows={8}
+          full
+          required
+          value={jobText}
+          placeholder={'Required qualifications\nFive years of Python\nPython or Java\n\nPreferred qualifications\nPublic speaking'}
+          onChange={setJobText}
         />
         <button type="submit" className="btn btn-primary" disabled={leaving}>
           Generate Tailored Resume
@@ -222,7 +301,10 @@ export default function ResumeMatcher({ onSave, photoBank, onPhotoBankChange, on
             ) : (
               <div className="changelog-section">
                 <h2>How It’s Tailored</h2>
-                <p className="panel-note">Built from your Data Bank to fit this listing.</p>
+                <p className="panel-note">Built from confirmed facts. {reuseNote}</p>
+                {pack && !pack.validation.ok && (
+                  <p className="panel-note">{pack.validation.problems.join(' ')}</p>
+                )}
                 <div className="changelog-list">
                   {tailoring.map((t, i) => (
                     <div key={t.id} className="changelog-item" style={{ animationDelay: `${0.35 + i * 0.12}s` }}>

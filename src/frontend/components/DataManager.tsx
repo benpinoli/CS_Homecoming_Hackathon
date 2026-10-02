@@ -2,6 +2,12 @@ import { useRef, useState } from 'react'
 import Field from './Field'
 import PhotoBank from './PhotoBank'
 import { parseResumeFile } from '../lib/backend'
+import FactReview from './FactReview'
+import TemplateSetup from './TemplateSetup'
+import { loadBank, mergeBank, saveBank } from '../lib/experienceBank'
+import type { BankFact } from '../lib/experienceBank'
+import { loadActiveTemplateId, loadTemplates, saveActiveTemplateId, saveCustomTemplates } from '../lib/docxTemplate'
+import type { ResumeTemplate } from '../lib/docxTemplate'
 import type { BankPhoto, DataSectionId, ParsedResume } from '../types'
 import '../styles/DataManager.css'
 
@@ -178,7 +184,10 @@ interface DataManagerProps {
 }
 
 export default function DataManager({ photos, onPhotosChange }: DataManagerProps) {
-  const [activeSection, setActiveSection] = useState<SectionId | 'photos'>('profile')
+  const [activeSection, setActiveSection] = useState<SectionId | 'photos' | 'confirm' | 'templates'>('profile')
+  const [facts, setFacts] = useState<BankFact[]>(() => loadBank())
+  const [templates, setTemplates] = useState<ResumeTemplate[]>(() => loadTemplates())
+  const [activeTemplateId, setActiveTemplateId] = useState(() => loadActiveTemplateId())
   const [data, setData] = useState<Record<SectionId, Entry[]>>(initialData)
 
   const section = SECTIONS.find((s) => s.id === activeSection) ?? SECTIONS[0]
@@ -246,6 +255,9 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
     setImporting(true)
     try {
       const result = await parseResumeFile(file)
+      const nextFacts = mergeBank(facts, result.facts)
+      setFacts(nextFacts)
+      saveBank(nextFacts)
       const counts = applyImport(result.data)
       if (counts.length === 0) {
         setImportError('We couldn’t find any resume content in that file.')
@@ -312,6 +324,18 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
             )
           })}
           <button
+            className={`data-nav-item ${activeSection === 'confirm' ? 'active' : ''}`}
+            onClick={() => setActiveSection('confirm')}
+          >
+            <span className="nav-label">Confirm facts</span>
+          </button>
+          <button
+            className={`data-nav-item ${activeSection === 'templates' ? 'active' : ''}`}
+            onClick={() => setActiveSection('templates')}
+          >
+            <span className="nav-label">Templates</span>
+          </button>
+          <button
             className={`data-nav-item ${activeSection === 'photos' ? 'active' : ''}`}
             onClick={() => setActiveSection('photos')}
           >
@@ -336,7 +360,7 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
           <ul className="import-counts">
             {importNotice.counts.map((c) => <li key={c}>{c}</li>)}
           </ul>
-          <p>Look through each section and fix anything that isn’t right. Imported entries were added to what you already had.</p>
+          <p>Look through each section, then confirm the facts that are true. Only confirmed facts can be written onto a resume.</p>
           {importNotice.warnings.length > 0 && (
             <ul className="import-warnings">
               {importNotice.warnings.map((w) => <li key={w}>{w}</li>)}
@@ -346,6 +370,19 @@ export default function DataManager({ photos, onPhotosChange }: DataManagerProps
       )}
       {activeSection === 'photos' ? (
         <PhotoBank photos={photos} onChange={onPhotosChange} />
+      ) : activeSection === 'confirm' ? (
+        <FactReview facts={facts} onChange={(next) => { setFacts(next); saveBank(next) }} />
+      ) : activeSection === 'templates' ? (
+        <TemplateSetup
+          templates={templates}
+          activeId={activeTemplateId}
+          onSave={(template) => {
+            const next = [...templates, template]
+            setTemplates(next)
+            saveCustomTemplates(next)
+          }}
+          onActivate={(id) => { setActiveTemplateId(id); saveActiveTemplateId(id) }}
+        />
       ) : (
       <section className="data-content" key={section.id}>
         <div className="section-title">
