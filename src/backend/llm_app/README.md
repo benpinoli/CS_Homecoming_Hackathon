@@ -52,8 +52,15 @@ Interactive docs: http://localhost:8000/docs
 | POST | `/api/analyze-job` | `{"job": {...}}` | Requirements, keywords, summary |
 | POST | `/api/tailor` | `{"profile": {...}, "job": {...}, "instructions": "optional"}` | `{job_analysis, resume, model}` |
 
-## Tests
+## Testing
 
-```powershell
-pytest
-```
+1. **Unit tests (free, offline):** the LLM is mocked, so no API key or network is needed.
+   ```powershell
+   pytest
+   ```
+2. **Smoke test (real API call, costs a little):** tailors a real profile to a job, saves the result to `data/output/`, and fails if any bullet cites a fact ID that isn't in the profile.
+   ```powershell
+   python scripts/smoke_test.py ..\resume_json_builder\resume_bank_kit\example_profile.json
+   python scripts/smoke_test.py <profile.json> <job.json>   # your own data
+   ```
+3. **Manually through the API:** run `uvicorn app.main:app --reload --port 8000`, open http://localhost:8000/docs, and use "Try it out" on `/api/tailor`.

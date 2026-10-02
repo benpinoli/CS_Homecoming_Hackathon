@@ -1,0 +1,19 @@
+{
+  "id": "job_sample_1",
+  "source_url": "https://example.com/careers/data-eng-intern",
+  "title": "Data Engineering Intern",
+  "company": "Example Analytics Co.",
+  "location": "Denver, CO (Hybrid)",
+  "description": "Fictional posting for testing. Join our data platform team to build and maintain pipelines that move operational data into our warehouse. You will write Python and SQL, add automated tests, and work with analysts to deliver reliable reporting.",
+  "requirements": [
+    "Currently pursuing a degree in Computer Science, Data Science, or a related field",
+    "Experience with Python",
+    "Experience writing SQL queries",
+    "Familiarity with automated testing (e.g., pytest)"
+  ],
+  "preferred_qualifications": [
+    "Experience with pandas or similar data tools",
+    "Exposure to ETL or reporting automation",
+    "Clear written communication"
+  ]
+}
