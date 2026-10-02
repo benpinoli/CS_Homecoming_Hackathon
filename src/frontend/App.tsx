@@ -6,6 +6,24 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [parseResult, setParseResult] = useState<unknown | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleTestParseResume = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/backend/resume_json_builder/ParseResume.ts')
+      if (!response.ok) {
+        throw new Error('Failed to call parseResume')
+      }
+      const result = await response.json()
+      setParseResult(result)
+    } catch (error) {
+      setParseResult({ error: String(error) })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <>
@@ -28,6 +46,19 @@ function App() {
         >
           Count is {count}
         </button>
+        <button
+          type="button"
+          onClick={handleTestParseResume}
+          disabled={isLoading}
+          style={{ marginLeft: '10px' }}
+        >
+          {isLoading ? 'Testing...' : 'Test parseResume'}
+        </button>
+        {parseResult !== null && (
+          <pre style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', maxHeight: '400px', overflow: 'auto' }}>
+            {JSON.stringify(parseResult, null, 2)}
+          </pre>
+        )}
       </section>
 
       <div className="ticks"></div>
