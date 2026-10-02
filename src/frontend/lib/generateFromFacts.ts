@@ -51,7 +51,7 @@ function score(fact: BankFact, requirements: JobRequirement[]): number {
   return total
 }
 
-function pageEstimate(resume: GeneratedResume): number {
+export function pageEstimate(resume: GeneratedResume): number {
   const lines =
     6 +
     (resume.summary ? 3 : 0) +
@@ -62,7 +62,7 @@ function pageEstimate(resume: GeneratedResume): number {
   return Math.max(1, Math.ceil(lines / LINES_PER_PAGE))
 }
 
-function keywordBank(bullets: BulletRecord[], skills: string[]): KeywordLink[] {
+export function keywordBank(bullets: BulletRecord[], skills: string[]): KeywordLink[] {
   const links: KeywordLink[] = []
   const push = (keyword: string, bulletText: string, factIds: string[]) => {
     const cleaned = keyword.trim()

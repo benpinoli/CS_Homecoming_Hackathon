@@ -14,7 +14,7 @@ Output: a tailored resume as JSON, where each bullet cites the profile fact IDs 
 llm_app/
 ├── app/
 │   ├── main.py              FastAPI app + CORS
-│   ├── config.py            Settings loaded from llm_provider.env
+│   ├── config.py            Settings loaded from the repo-root .env.local
 │   ├── api/routes.py        HTTP endpoints
 │   ├── schemas/             Pydantic models (job posting, LLM outputs, requests)
 │   ├── services/
@@ -27,8 +27,7 @@ llm_app/
 │   ├── jobs/                Sample scraped job JSON
 │   └── output/              Generated resumes (git-ignored)
 ├── tests/
-├── requirements.txt
-└── llm_provider.env.example
+└── requirements.txt
 ```
 
 ## Setup
@@ -38,8 +37,16 @@ cd src/backend/llm_app
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy llm_provider.env.example llm_provider.env   # then add your API key
 uvicorn app.main:app --reload --port 8000
+```
+
+Configuration comes from `.env.local` in the repo root, the same file `npm run dev` uses (`.env` is read too; `.env.local` wins). Only `ANTHROPIC_API_KEY` is required. Optional settings:
+
+```
+ANTHROPIC_MODEL=claude-opus-5-5
+ANTHROPIC_EFFORT=low            # low | medium | high | xhigh | max
+ANTHROPIC_MAX_TOKENS=10000
+ENABLE_REFUSAL_FALLBACK=true
 ```
 
 Interactive docs: http://localhost:8000/docs

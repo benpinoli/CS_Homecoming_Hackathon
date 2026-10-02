@@ -5,11 +5,13 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLM_APP_DIR = Path(__file__).resolve().parent.parent
-ENV_FILE = LLM_APP_DIR / "llm_provider.env"
+PROJECT_ROOT = LLM_APP_DIR.parents[2]  # llm_app -> backend -> src -> repo root
+# Same files the Vite dev server reads; .env.local wins over .env, real env vars win over both.
+ENV_FILES = (PROJECT_ROOT / ".env", PROJECT_ROOT / ".env.local")
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore")
 
     anthropic_api_key: str
     anthropic_model: str = "claude-opus-5-5"

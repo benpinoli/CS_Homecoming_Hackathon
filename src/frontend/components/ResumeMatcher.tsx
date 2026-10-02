@@ -11,6 +11,7 @@ import { DEFAULT_APPEARANCE } from '../types'
 import type { BankPhoto, GeneratedResume, LayoutId, PhotoAdvice, ResumeAppearance, SavedResume, TailoringPoint } from '../types'
 import { loadBank } from '../lib/experienceBank'
 import { generateFromConfirmedFacts } from '../lib/generateFromFacts'
+import { tailorWithLlm } from '../lib/llmTailoring'
 import type { GeneratedFromFacts } from '../lib/generateFromFacts'
 import { loadActiveTemplateId, loadTemplates } from '../lib/docxTemplate'
 import { gapsFillableFromConfirmed, requirementsFromJobText, splitMatches } from '../lib/requirementMatch'
@@ -77,8 +78,9 @@ export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankCha
     try {
       let description = jobText.trim()
       let listingUrl = jobUrl.trim()
+      let scraped: ScrapedJob | null = null
       if (listingUrl) {
-        const scraped = await scrapeJobReal(listingUrl)
+        scraped = await scrapeJobReal(listingUrl)
         if (scraped.job_description.trim()) {
           description = scraped.job_description.trim()
           setJobText(description)
@@ -99,9 +101,23 @@ export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankCha
       if (template && (template.id === 'centered' || template.id === 'left' || template.id === 'banner' || template.id === 'sidebar')) {
         setAppearance((current) => ({ ...current, layout: template.id as LayoutId }))
       }
-      const generated = generateFromConfirmedFacts(facts, requirements, template?.pageLimit ?? 1)
+      const pageLimit = template?.pageLimit ?? 1
+      const listing: ScrapedJob = { ...scraped, url: listingUrl, job_description: description }
+      let generated = generateFromConfirmedFacts(facts, requirements, pageLimit)
       if (generated.factIds.length === 0) {
         throw new Error('Confirm at least one fact in the Data Bank before generating a resume.')
+      }
+      if (DEV.useRealTailoring) {
+        try {
+          generated = await tailorWithLlm(facts, listing, generated.resume, pageLimit)
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : 'unknown error'
+          generated.tailoring.unshift({
+            id: 'llm-unavailable',
+            area: 'Tailoring',
+            detail: `Claude tailoring wasn’t available (${reason}), so this draft uses your confirmed facts as written.`,
+          })
+        }
       }
       const reusable = saved.find((item) => {
         const match = splitMatches(requirements, item.keywordBank ?? [])
@@ -118,7 +134,6 @@ export default function ResumeMatcher({ saved, onSave, photoBank, onPhotoBankCha
             ? 'Some missing requirements are supported by confirmed facts and were considered for this draft. Anything still missing stays missing.'
             : 'Missing requirements are not supported by confirmed facts, so they were not added.',
       )
-      const listing: ScrapedJob = { url: listingUrl, job_description: description }
       const advice = await getPhotoAdvice(listing)
       setJob(listing)
       setPack(generated)

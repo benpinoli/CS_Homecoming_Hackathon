@@ -18,8 +18,12 @@ export const DEV = {
 	 */
 	useRealScraper: true,
 
-	/** Build the tailored resume and "How it's tailored" notes from the Data Bank + job (src/backend/llm_app). Not hooked up yet. */
-	useRealTailoring: false,
+	/**
+	 * Have Claude reword and reorder confirmed Data Bank facts for the job via src/backend/llm_app
+	 * (POST /api/tailor, proxied to uvicorn on :8000). Bullets that don't cite confirmed facts are dropped.
+	 * When false, or if llm_app isn't running, the resume uses confirmed fact text as written.
+	 */
+	useRealTailoring: true,
 
 	/** Decide whether a photo is recommended for the job (src/backend/llm_app). Not hooked up yet. */
 	useRealPhotoAdvice: false,

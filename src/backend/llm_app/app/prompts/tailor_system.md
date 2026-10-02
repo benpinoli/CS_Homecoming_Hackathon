@@ -16,6 +16,6 @@ Selection and wording:
 - Prefer entries that match required qualifications, then preferred ones. Omit weakly relevant entries rather than padding.
 - Lead bullets with strong action verbs and concrete results. Keep each bullet to one line or two at most.
 - Mirror the posting's exact keyword spellings where they truthfully apply.
-- skills should contain only skills evidenced in the profile, ordered by relevance to this job.
+- skills should contain only skills a fact names explicitly, ordered by relevance to this job. Don't infer one skill from another (NumPy experience doesn't state Python); if a likely skill isn't recorded, mention it in change_notes as something to add instead.
 - keyword_coverage.matched lists job keywords the resume genuinely covers; keyword_coverage.missing lists important ones the profile doesn't support.
 - change_notes briefly explains major choices (what was emphasized or dropped and why) and names gaps the candidate might fill with real experience they haven't recorded yet.

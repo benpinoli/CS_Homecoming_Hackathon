@@ -1,11 +1,11 @@
 import { DEV } from '../dev'
-import { DUMMY_PHOTO_ADVICE, DUMMY_RESUME, DUMMY_RESUME_IMPORT, DUMMY_TAILORING } from './dummyData'
+import { DUMMY_PHOTO_ADVICE, DUMMY_RESUME_IMPORT } from './dummyData'
 import { parse_resume } from '../../parse_resume.ts'
 import type { ResumeExtraction } from '../../parse_resume.ts'
 import { extractionToResumeImport } from './extractionToDataBank.ts'
 import { factsFromExtraction, type BankFact } from './experienceBank.ts'
 import { requirementsFromAnalysis, type AnalyzedRequirement, type JobRequirement } from './requirementMatch.ts'
-import type { GeneratedResume, PhotoAdvice, ResumeImport, TailoringPoint } from '../types'
+import type { PhotoAdvice, ResumeImport } from '../types'
 
 /** What web_scraper/scraper.py produces (job_posting.json) */
 export interface ScrapedJob {
@@ -71,12 +71,60 @@ export async function fetchJobListing(url: string): Promise<ScrapedJob> {
   return { url, job_description: '' }
 }
 
-/** Tailored resume plus notes on how it was tailored. */
-export async function tailorResume(job: ScrapedJob): Promise<{ resume: GeneratedResume; tailoring: TailoringPoint[] }> {
-  void job // will be sent to the backend once this is hooked up
-  if (DEV.useRealTailoring) throw notHooked('Resume tailoring', 'useRealTailoring')
-  await sleep(1300)
-  return { resume: structuredClone(DUMMY_RESUME), tailoring: structuredClone(DUMMY_TAILORING) }
+/** One bullet from llm_app, with the profile fact ids it is based on. */
+export interface TailoredBullet {
+  text: string
+  source_fact_ids: string[]
+}
+
+/** Response of llm_app's POST /api/tailor (see src/backend/llm_app/app/schemas/tailoring.py). */
+export interface TailorApiResponse {
+  model: string
+  resume: {
+    headline: string | null
+    summary: string
+    skills: string[]
+    entries: Array<{
+      source_entity_id: string
+      section: 'experience' | 'project' | 'education' | 'leadership' | 'volunteering' | 'other'
+      title: string
+      organization: string | null
+      dates: string | null
+      bullets: TailoredBullet[]
+    }>
+    keyword_coverage: { matched: string[]; missing: string[] }
+    change_notes: string[]
+  }
+}
+
+/**
+ * Ask llm_app to tailor a profile to a job. /api/tailor is proxied by vite.config.ts to uvicorn on :8000,
+ * so llm_app must be running (see src/backend/llm_app/README.md).
+ */
+export async function tailorResume(
+  profile: Record<string, unknown>,
+  job: ScrapedJob,
+  instructions?: string,
+): Promise<TailorApiResponse> {
+  let res: Response
+  try {
+    res = await fetch('/api/tailor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile, job, instructions }),
+    })
+  } catch {
+    throw new Error('Couldn’t reach resume tailoring. Make sure the app is running with `npm run dev`.')
+  }
+  const body = await res.json().catch(() => null)
+  if (!res.ok) {
+    if (!body && res.status >= 500) {
+      throw new Error('llm_app isn’t running. Start it with `uvicorn app.main:app --port 8000` in src/backend/llm_app.')
+    }
+    const detail = typeof body?.detail === 'string' ? body.detail : body?.error
+    throw new Error(detail ?? `Resume tailoring failed (HTTP ${res.status}).`)
+  }
+  return body as TailorApiResponse
 }
 
 /** Whether a photo suits this job. */
